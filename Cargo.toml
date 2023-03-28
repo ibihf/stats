@@ -1,0 +1,21 @@
+[package]
+name = "ibihf"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+axum = { version = "0.6.12" }
+axum-macros = "0.3.7"
+chrono = { version = "0.4.24", features = ["serde"] }
+serde = "1.0.158"
+serde_plain = "1.0.1"
+serde_tuple = "0.5.0"
+sql-builder = "3.1.1"
+sqlx = { version = "0.6.3", features = ["postgres", "runtime-tokio-rustls", "time", "chrono"] }
+static_assertions = "1.1.0"
+tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros" ] }
+
+[dev-dependencies]
+tokio-test = "0.4.2"

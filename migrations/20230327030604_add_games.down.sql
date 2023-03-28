@@ -1,0 +1,2 @@
+DELETE FROM games
+  WHERE id BETWEEN 1 AND 4;
