@@ -1,5 +1,4 @@
 use sqlx::FromRow;
-use sqlx::PgPool;
 use sqlx::types::chrono::{DateTime, Utc};
 use chrono::serde::{ts_seconds, ts_seconds_option};
 use serde::{Serialize, Deserialize};
@@ -15,7 +14,7 @@ macro_rules! impl_table_name {
   }
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug)]
 pub struct League {
   pub id: i32,
   pub name: String,
@@ -52,6 +51,7 @@ pub struct Team {
   pub id: i32,
   pub name: String,
   pub division: i32,
+  pub image: Option<String>,
 }
 
 #[derive(FromRow, Serialize, Deserialize)]
@@ -95,55 +95,13 @@ pub struct TeamPlayer {
   pub position: i32,
 }
 
-#[derive(FromRow, Deserialize, Serialize, Debug)]
-pub struct Notification {
-  pub scorer_name: String,
-  pub scorer_number: i32,
-  pub position: String,
-  pub scorer_team_name: String,
-  pub period_name: String,
-  pub period_time_left: i32,
-}
-
-#[derive(FromRow, Deserialize, Serialize, Debug)]
-pub struct PlayerStats {
-  pub player_name: String,
-  pub goals: i64,
-  pub assists: i64,
-  pub points: i64,
-}
-
-async fn get_player_stats_overview(pool: PgPool) -> Result<Vec<PlayerStats>, sqlx::Error> {
-  let query = r#"
-SELECT
-  (
-    SELECT COUNT(id)
-    FROM shots
-    WHERE shooter=players.id
-      AND goal=true
-  ) AS goals,
-  (
-    SELECT COUNT(id)
-    FROM shots
-    WHERE assistant=players.id
-      AND goal=true
-  ) AS assists,
-  (
-    SELECT COUNT(id)
-    FROM shots
-    WHERE assistant=players.id
-       OR shooter=players.id
-  ) AS points,
-  players.name AS player_name
-FROM players
-ORDER BY
-  points DESC,
-  players.name;
-"#;
-  let result = sqlx::query_as::<_, PlayerStats>(query)
-    .fetch_all(&pool)
-    .await;
-  result
+#[derive(FromRow, Deserialize, Serialize)]
+pub struct Game {
+  pub id: i32,
+  pub division: i32,
+  pub name: String,
+  pub team_home: i32,
+  pub team_away: i32,
 }
 
 impl_table_name!(TeamPlayer, "team_players");
@@ -152,6 +110,7 @@ impl_table_name!(League, "leagues");
 impl_table_name!(Division, "divisions");
 impl_table_name!(Team, "teams");
 impl_table_name!(Shot, "shots");
+impl_table_name!(Game, "games");
 
 #[cfg(test)]
 mod tests {
@@ -164,58 +123,8 @@ mod tests {
     Team,
     Shot,
     TableName,
-    Notification,
-    get_player_stats_overview,
+    Game,
   };
-
-  #[test]
-  fn check_player_overall_stats() {
-    tokio_test::block_on(async move {
-      let pool = db_connect().await;
-      let players_stats = get_player_stats_overview(pool).await.unwrap();
-      for player_stats in players_stats {
-        println!("{player_stats:?}");
-      }
-    })
-  }
-
-  #[test]
-  fn check_notification_query() {
-    tokio_test::block_on(async move {
-      let pool = db_connect().await;
-      let query = r#"
-SELECT
-  teams.name AS scorer_team_name,
-  players.name AS scorer_name,
-  positions.name AS position,
-  team_players.player_number AS scorer_number,
-  shots.period_time AS period_time_left,
-  periods.name AS period_name
-FROM
-  shots
-JOIN teams ON teams.id=shots.shooter_team
-JOIN players ON players.id=shots.shooter
-JOIN team_players ON team_players.player=players.id AND team_players.team=teams.id
-JOIN periods ON periods.id=shots.period
-JOIN positions ON positions.id=team_players.position;
-"#;
-      let result = sqlx::query_as::<_, Notification>(query)
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-      let minutes = result.period_time_left / 60;
-      let seconds = result.period_time_left % 60;
-      println!("{0} {1} player #{3} {2} has scored! Time of the goal: {4}:{5} in the {6}",
-        result.scorer_team_name,
-        result.position,
-        result.scorer_name,
-        result.scorer_number,
-        minutes,
-        seconds,
-        result.period_name
-      );
-    });
-  }
 
   /// A simple function to connect to the database.
   async fn db_connect() -> sqlx::PgPool {
@@ -258,4 +167,5 @@ JOIN positions ON positions.id=team_players.position;
   generate_select_test!(Division, select_division);
   generate_select_test!(Team, select_team);
   generate_select_test!(Shot, select_shot);
+  generate_select_test!(Game, select_game);
 }

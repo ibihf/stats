@@ -1,2 +1,2 @@
 -- Add down migration script here
-DROP TABLE games;
+DROP TABLE IF EXISTS games;
