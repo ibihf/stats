@@ -1,8 +1,9 @@
 -- Add up migration script here
 CREATE TABLE IF NOT EXISTS games (
   id SERIAL PRIMARY KEY NOT NULL,
-  -- a possibly null name for the game; this allows there to be special names like "Gold Medal Game"
-  name VARCHAR(255),
+  -- this allows there to be special names like "Gold Medal Game", but the default will be the number of games already in the division + 1
+  -- NOTE: this is only done in the front end, the backend will not give a default value
+  name VARCHAR(255) NOT NULL,
   -- what divison is the game a part of (usefl for stats)
   division INTEGER NOT NULL,
   team_home INTEGER NOT NULL,

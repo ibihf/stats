@@ -1,9 +1,9 @@
 mod db;
 mod model;
 mod views;
+mod filters;
 
 use crate::model::{
-  TableName,
   League,
   Team,
   Division,
@@ -13,14 +13,24 @@ use crate::model::{
   Game,
 };
 use views::{
+  GoalDetails,
+  PlayerStats,
+  TeamStats,
+  ShotDetails,
   get_score_from_game,
   get_box_score_from_game,
+  get_play_by_play_from_game,
+  get_goals_from_game,
+  get_latest_league_for_player,
+  get_league_player_stats,
+  get_all_player_stats,
 };
 
 use sqlx::{
   Postgres,
   Pool,
 };
+use ormx::Table;
 use axum::{
   Router,
   http::StatusCode,
@@ -38,6 +48,78 @@ use axum::{
 use axum_macros::debug_handler;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use askama::Template;
+
+#[derive(Template)]
+#[template(path="hello.html")]
+struct HelloTemplate<'a> {
+  name: &'a str,
+  years: i32
+}
+
+#[derive(Template)]
+#[template(path="partials/box_score_table.html")]
+struct BoxScoreTemplate {
+  goals: Vec<GoalDetails>,
+}
+
+#[derive(Template)]
+#[template(path="partials/individual_game_points_table.html")]
+struct IndividualGamePointsTableTemplate {
+  players: Vec<PlayerStats>,
+}
+
+#[derive(Template)]
+#[template(path="partials/team_stats_table.html")]
+struct TeamGameStatsTemplate {
+  teams: Vec<TeamStats>,
+}
+
+#[derive(Template)]
+#[template(path="division_list.html")]
+struct DivisionListTemplate {
+  league: League,
+  divisions: Vec<Division>,
+}
+
+#[derive(Template)]
+#[template(path="league_list.html")]
+struct LeagueListTemplate {
+  leagues: Vec<League>,
+}
+
+#[derive(Template)]
+#[template(path="game_list.html")]
+struct GameListTemplate {
+  division: Division,
+  games: Vec<Game>,
+}
+
+#[derive(Template)]
+#[template(path="partials/play_by_play_table.html")]
+struct ShotsTableTemplate {
+  shots: Vec<ShotDetails>,
+}
+
+#[derive(Template)]
+#[template(path="game_score_page.html")]
+struct GameScorePageTemplate {
+  game: Game,
+  division: Division,
+  box_score: BoxScoreTemplate,
+  team_stats: TeamGameStatsTemplate,
+  individual_stats: IndividualGamePointsTableTemplate,
+  play_by_play: ShotsTableTemplate,
+}
+
+#[derive(Template)]
+#[template(path="player_page.html")]
+pub struct PlayerPageTemplate {
+  player: Player,
+  league: League,
+  league_stats: PlayerStats,
+  lifetime_stats: PlayerStats,
+}
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -52,9 +134,12 @@ async fn main() {
   }; 
   let router = Router::new()
     .route("/", get(league_html))
-    .route("/league/:id/divisions/", get(divisions_for_league_html))
+    .route("/shots/", get(shots_all))
+    .route("/test/", get(test_template))
+    .route("/league/:id/", get(divisions_for_league_html))
     .route("/division/:id/", get(games_for_division_html))
     .route("/game/:id/", get(score_for_game_html))
+    .route("/player/:name/", get(player_from_name))
     .with_state(state);
   let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
   println!("Listening on {}", addr);
@@ -64,39 +149,38 @@ async fn main() {
     .unwrap();
 }
 
-async fn get_all<T: Send + Unpin + TableName + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>>(pool: &sqlx::PgPool) -> Result<Vec<T>, sqlx::Error> {
-  sqlx::query_as::<_, T>(
-    &format!("SELECT * FROM {};", <T as TableName>::TABLE_NAME)
-  )
-  .fetch_all(pool)
-  .await
+async fn player_from_name(State(server_config): State<ServerState>, Path(name): Path<String>) -> impl IntoResponse {
+  let player = Player::from_name_case_insensitive(&server_config.db_pool, name)
+    .await
+    .unwrap();
+  let latest_league = get_latest_league_for_player(&server_config.db_pool, &player)
+    .await
+    .unwrap()
+    .unwrap();
+  let latest_league_stats = get_league_player_stats(&server_config.db_pool, &player, &latest_league)
+    .await
+    .unwrap();
+  let lifetime_stats = get_all_player_stats(&server_config.db_pool, &player)
+    .await
+    .unwrap();
+  let html = PlayerPageTemplate {
+    player,
+    league: latest_league,
+    league_stats: latest_league_stats,
+    lifetime_stats,
+  };
+  (StatusCode::OK, html)
 }
-async fn get_by_id<T: Send + Unpin + TableName + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>>(pool: &sqlx::PgPool, id: i32) -> Result<Option<T>, sqlx::Error> {
-  sqlx::query_as::<_, T>(
-    &format!("SELECT * FROM {} WHERE id = $1;", <T as TableName>::TABLE_NAME)
-  )
-  .bind(id)
-  .fetch_optional(pool)
-  .await
+
+async fn test_template<'a>() -> HelloTemplate<'a> {
+  HelloTemplate { name: "Tait", years: 24 }
 }
-/*
-async fn insert_into<T: Sync + Send + Unpin + TableName + for<'r> sqlx::FromRow<'r, sqlx::postgres::PgRow>>(pool: &sqlx::PgPool, new: &T) -> Result<sqlx::postgres::PgQueryResult, sqlx::Error> {
-  let query = sql_builder::SqlBuilder::insert_into(<T as TableName>::TABLE_NAME)
-    .values(())
-    .sql().unwrap();
-  sqlx::query(
-    &query
-  )
-  .execute(pool)
-  .await
-}
-*/
 
 macro_rules! get_all {
   ($crud_struct:ident, $func_name:ident) => {
     #[debug_handler]
     async fn $func_name(State(server_config): State<ServerState>) -> impl IntoResponse {
-      let cruder = get_all::<$crud_struct>(&server_config.db_pool)
+      let cruder = $crud_struct::all(&*server_config.db_pool)
         .await
         .unwrap();
       (StatusCode::OK, Json(cruder))
@@ -107,7 +191,7 @@ macro_rules! get_by_id {
   ($crud_struct:ident, $func_name:ident) => {
     #[debug_handler]
     async fn $func_name(State(server_config): State<ServerState>, Path(id): Path<i32>) -> impl IntoResponse {
-      let cruder = get_by_id::<$crud_struct>(&server_config.db_pool, id)
+      let cruder = $crud_struct::get(&*server_config.db_pool, id)
         .await
         .unwrap();
       (StatusCode::OK, Json(cruder))
@@ -116,60 +200,41 @@ macro_rules! get_by_id {
 }
 
 async fn league_html(State(server_config): State<ServerState>) -> impl IntoResponse {
-  let leagues_html = get_all::<League>(&server_config.db_pool).await
-    .unwrap()
-    .iter()
-    .map(|league| {
-      format!(
-        "<li><a href=\"{1}\">{0}</a></li>",
-        league.name,
-        format!("/league/{}/divisions/", league.id),
-      )
-    })
-    .collect::<Vec<String>>()
-    .join("\n");
-  let html = format!("<ul>{leagues_html}</ul>");
-  (StatusCode::OK, Html(html))
+  let leagues = League::all(&*server_config.db_pool)
+    .await
+    .unwrap();
+  let leagues_template = LeagueListTemplate {
+    leagues
+  };
+  (StatusCode::OK, leagues_template)
 }
 
 async fn divisions_for_league_html(State(server_config): State<ServerState>, Path(league_id): Path<i32>) -> impl IntoResponse {
-  let leagues_html = sqlx::query_as::<_, Division>("SELECT * FROM divisions WHERE league = $1")
-    .bind(league_id)
-    .fetch_all(&*server_config.db_pool)
+  let league = League::get(&*server_config.db_pool, league_id)
     .await
-    .unwrap()
-    .iter()
-    .map(|division| {
-      format!(
-        "<li><a href=\"{1}\">{0}</a></li>",
-        division.name,
-        format!("/division/{}/", division.id),
-      )
-    })
-    .collect::<Vec<String>>()
-    .join("\n");
-  let html = format!("<ul>{leagues_html}</ul>");
-  (StatusCode::OK, Html(html))
+    .unwrap();
+  let divisions = Division::by_league(&*server_config.db_pool, league_id)
+    .await
+    .unwrap();
+  let html = DivisionListTemplate {
+    league,
+    divisions
+  };
+  (StatusCode::OK, html)
 }
 
 async fn games_for_division_html(State(server_config): State<ServerState>, Path(division_id): Path<i32>) -> impl IntoResponse {
-  let leagues_html = sqlx::query_as::<_, Game>("SELECT * FROM games WHERE division = $1")
-    .bind(division_id)
-    .fetch_all(&*server_config.db_pool)
+  let division = Division::get(&*server_config.db_pool, division_id)
     .await
-    .unwrap()
-    .iter()
-    .map(|game| {
-      format!(
-        "<li><a href=\"{1}\">{0}</a></li>",
-        game.name,
-        format!("/game/{}/", game.id),
-      )
-    })
-    .collect::<Vec<String>>()
-    .join("\n");
-  let html = format!("<ul>{leagues_html}</ul>");
-  (StatusCode::OK, Html(html))
+    .unwrap();
+  let games = Game::by_division(&*server_config.db_pool, division.id)
+    .await
+    .unwrap();
+  let games_template = GameListTemplate {
+    division,
+    games
+  };
+  (StatusCode::OK, games_template)
 }
 async fn score_for_game_html(State(server_config): State<ServerState>, Path(game_id): Path<i32>) -> impl IntoResponse {
   let game = sqlx::query_as::<_, Game>(
@@ -179,16 +244,28 @@ async fn score_for_game_html(State(server_config): State<ServerState>, Path(game
   .fetch_one(&*server_config.db_pool)
   .await
   .unwrap();
+  let division = Division::get(&*server_config.db_pool, game.division)
+    .await
+    .unwrap();
+  let pbp = get_play_by_play_from_game(&server_config.db_pool, &game).await.unwrap();
   let score = get_score_from_game(&server_config.db_pool, &game).await.unwrap();
-  let box_score_html = get_box_score_from_game(&server_config.db_pool, &game).await.unwrap()
-    .iter()
-    .map(|player_stats| {
-      format!("<tr><td>{0}</td><td>{1}</td><td>{2}</td><td>{3}</td></tr>", player_stats.player_name, player_stats.points, player_stats.goals, player_stats.assists)
-    })
-    .collect::<Vec<String>>()
-    .join("");
-  let html = format!("<p>{}: {}<br>{}: {}</p><table>{}</table>", score.home_name, score.home, score.away_name, score.away, box_score_html);
-  (StatusCode::OK, Html(html))
+  let score_html = TeamGameStatsTemplate { teams: score };
+  let goal_details = get_box_score_from_game(&server_config.db_pool, &game).await.unwrap();
+  let goal_details_html = IndividualGamePointsTableTemplate { players: goal_details };
+  let box_score = get_goals_from_game(&server_config.db_pool, &game).await.unwrap();
+  let box_score_html = BoxScoreTemplate { goals: box_score };
+  let pbp_html = ShotsTableTemplate {
+    shots: pbp
+  };
+  let game_template = GameScorePageTemplate {
+    division,
+    game,
+    box_score: box_score_html,
+    team_stats: score_html,
+    individual_stats: goal_details_html,
+    play_by_play: pbp_html,
+  };
+  (StatusCode::OK, game_template)
 }
 
 /*
@@ -203,6 +280,7 @@ macro_rules! insert {
     }
   }
 }
+*/
 
 macro_rules! impl_all_query_types {
   ($ty:ident, $func_all:ident, $func_by_id:ident) => {
@@ -241,5 +319,3 @@ impl_all_query_types!(
   league_all,
   league_id
 );
-
-*/

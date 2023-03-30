@@ -1,0 +1,36 @@
+<table>
+  <thead>
+    <th>Scorer</td>
+    <th>Team</th>
+    <th>#</th>
+    <th>Period</th>
+    <th>Time</th>
+    <th>Assist</th>
+    <th>Secondary Assist</th>
+  </thead>
+  <tbody>
+    {% for goal in goals %}
+      <tr>
+        <td>{{ goal.player_name }}</td>
+        <td>{{ goal.team_name }}</td>
+        <td>{{ goal.player_number }}</td>
+        <td>{{ goal.period_short_name }}</td>
+        <td>{{ goal.time_remaining|seconds_as_time }}</td>
+        <td>
+          {% if goal.first_assist_name.is_some() %}
+            {{ goal.first_assist_name.as_ref().unwrap() }}
+          {% else %}
+            unassisted
+          {% endif %}
+        </td>
+        <td>
+          {% if goal.second_assist_name.is_some() %}
+            {{ goal.second_assist_name.as_ref().unwrap() }}
+          {% else %}
+            N/A
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

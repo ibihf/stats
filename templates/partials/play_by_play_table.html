@@ -1,0 +1,48 @@
+<table>
+  <thead>
+    <th>Shooter</td>
+    <th>Team</th>
+    <th>#</th>
+    <th>Type</th>
+    <th>Period</th>
+    <th>Time</th>
+    <th>Assist</th>
+    <th>Secondary Assist</th>
+  </thead>
+  <tbody>
+    {% for shot in shots %}
+      <tr>
+        <td>{{ shot.player_name }}</td>
+        <td>{{ shot.team_name }}</td>
+        <td>{{ shot.player_number }}</td>
+        <td>
+          {% if shot.is_goal %}
+            Goal
+          {% else %}
+            Shot
+          {% endif %}
+        </td>
+        <td>{{ shot.period_short_name }}</td>
+        <td>{{ shot.time_remaining|seconds_as_time }}</td>
+        <td>
+          {% if shot.is_goal %}
+            {% if shot.first_assist_name.is_some() %}
+              {{ shot.first_assist_name.as_ref().unwrap() }}
+            {% else %}
+              unassisted
+            {% endif %}
+          {% else %}
+            N/A
+          {% endif %}
+        </td>
+        <td>
+          {% if shot.second_assist_name.is_some() %}
+            {{ shot.second_assist_name.as_ref().unwrap() }}
+          {% else %}
+            N/A
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

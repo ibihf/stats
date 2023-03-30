@@ -1,0 +1,20 @@
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Points</th>
+      <th>Goals</th>
+      <th>Assists</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for player in players %}
+    <tr>
+      <td>{{ player.name }}</td>
+      <td>{{ player.points }}</td>
+      <td>{{ player.goals }}</td>
+      <td>{{ player.assists }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>

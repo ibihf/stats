@@ -16,8 +16,6 @@ CREATE TABLE IF NOT EXISTS shots (
   shooter INTEGER NOT NULL,
   -- which player was the goalie
   goalie INTEGER NOT NULL,
-  -- which game was this a part of
-  game INTEGER NOT NULL,
   -- which period did the shot happen in
   period INTEGER NOT NULL,
   -- when did the shot happen relative to the beginning of the period
@@ -25,6 +23,8 @@ CREATE TABLE IF NOT EXISTS shots (
   -- if applicable, set assistant(s)
   assistant INTEGER,
   assistant_second INTEGER,
+  -- when was the record created
+  created_at TIMESTAMPTZ NOT NULL DEFAULT current_timestamp,
   -- was the shooter a real player
   CONSTRAINT shooter_fk
     FOREIGN KEY(shooter)
@@ -55,12 +55,7 @@ CREATE TABLE IF NOT EXISTS shots (
     FOREIGN KEY(shooter_team)
       REFERENCES teams(id)
       ON DELETE RESTRICT,
-  -- is the game a real game
-  CONSTRAINT game_fk
-    FOREIGN KEY(game)
-      REFERENCES games(id)
-      ON DELETE RESTRICT,
-  -- is the period refgerences a real period type
+  -- is the period references a real period
   CONSTRAINT period_fk
     FOREIGN KEY(period)
       REFERENCES periods(id)

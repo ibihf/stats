@@ -7,15 +7,17 @@ pub trait TableName {
   const TABLE_NAME: &'static str;
 }
 macro_rules! impl_table_name {
-  ($ty:ident, $tname:expr) => {
+  ($ty:ident, $tname:literal) => {
     impl TableName for $ty {
       const TABLE_NAME: &'static str = $tname;
     }
   }
 }
 
-#[derive(FromRow, Serialize, Deserialize, Debug)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
+#[ormx(table = "leagues", id = id, insertable, deletable)]
 pub struct League {
+  #[ormx(default)]
   pub id: i32,
   pub name: String,
   #[serde(with = "ts_seconds")]
@@ -23,7 +25,8 @@ pub struct League {
   #[serde(with = "ts_seconds_option")]
   pub end_date: Option<DateTime<Utc>>,
 }
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
+#[ormx(table_name = "leagues", table = League, id = "id")]
 pub struct NewLeague {
   pub name: String,
   #[serde(with = "ts_seconds")]
@@ -32,72 +35,104 @@ pub struct NewLeague {
   pub end_date: Option<DateTime<Utc>>,
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
+#[ormx(table = "divisions", id = id, insertable, deletable)]
 pub struct Division {
+  #[ormx(default)]
   pub id: i32,
   pub name: String,
+  #[ormx(get_many(i32))]
   pub league: i32,
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
+#[ormx(table_name = "divisions", table = Division, id = "id")]
 pub struct NewDivision {
-  pub id: i32,
   pub name: String,
   pub league: i32,
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
+#[ormx(table = "teams", id = id, insertable, deletable)]
 pub struct Team {
+  #[ormx(default)]
   pub id: i32,
   pub name: String,
   pub division: i32,
   pub image: Option<String>,
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
+#[ormx(table_name = "teams", table = Team, id = "id")]
 pub struct NewTeam {
   pub name: String,
   pub division: i32,
 }
 
-#[derive(FromRow, Serialize, Deserialize)]
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
+#[ormx(table = "players", id = id, insertable, deletable)]
 pub struct Player {
+  #[ormx(default)]
   pub id: i32,
   pub name: String,
   pub weight_kg: Option<i32>,
   pub height_cm: Option<i32>,
 }
 
-#[derive(FromRow, Deserialize, Serialize)]
+impl Player {
+  pub async fn from_name_case_insensitive(pool: &sqlx::PgPool, name: String) -> Option<Player> {
+    sqlx::query_as::<_, Player>("SELECT * FROM players WHERE REPLACE(UPPER(name), ' ', '-') LIKE UPPER($1);")
+      .bind(name)
+      .fetch_optional(pool)
+      .await
+      .unwrap()
+  }
+}
+
+#[derive(FromRow, Deserialize, Serialize, Debug, ormx::Patch)]
+#[ormx(table_name = "players", table = Player, id = "id")]
 pub struct NewPlayer {
   pub name: String,
   pub weight_kg: Option<i32>,
   pub height_cm: Option<i32>,
 }
 
-#[derive(FromRow, Deserialize, Serialize)]
+#[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
+#[ormx(table = "shots", id = id, insertable, deletable)]
 pub struct Shot {
+  #[ormx(default)]
   pub id: i32,
   pub shooter_team: i32,
+  pub shooter: i32,
   pub goalie: i32,
   pub assistant: Option<i32>,
-  pub game: i32,
   pub period: i32,
   pub period_time: i32,
   pub video_timestamp: Option<i32>,
+  pub blocker: Option<i32>,
+  pub on_net: bool,
+  pub assistant_second: Option<i32>,
+  pub goal: bool,
+  #[serde(with = "ts_seconds")]
+  pub created_at: DateTime<Utc>,
 }
 
-#[derive(FromRow, Deserialize, Serialize)]
+#[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
+#[ormx(table = "team_players", id = id, insertable, deletable)]
 pub struct TeamPlayer {
+  #[ormx(default)]
   pub id: i32,
   pub team: i32,
   pub player: i32,
   pub position: i32,
 }
 
-#[derive(FromRow, Deserialize, Serialize)]
+#[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
+#[ormx(table = "games", id = id, insertable, deletable)]
 pub struct Game {
+  #[ormx(default)]
   pub id: i32,
+  #[ormx(get_many(i32))]
   pub division: i32,
   pub name: String,
   pub team_home: i32,
@@ -125,6 +160,17 @@ mod tests {
     TableName,
     Game,
   };
+
+  #[test]
+  fn test_get_player_from_name() {
+    tokio_test::block_on(async move {
+      let pool = db_connect().await;
+      let player = Player::from_name_case_insensitive(&pool, "tait-hoyem".to_string()).await;
+      assert!(player.is_some());
+      let player = player.unwrap();
+      assert_eq!(player.name, "Tait Hoyem");
+    })
+  }
 
   /// A simple function to connect to the database.
   async fn db_connect() -> sqlx::PgPool {
