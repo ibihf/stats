@@ -1,6 +1,6 @@
-<h1 id="leagues">IBIHF Leagues</h1>
+<h1 id="leagues">{{ heading }}</h1>
 <ol aria-labelledby="leagues">
   {% for league in leagues %}
-    <li><a href="/league/{{ league.id }}/">{{ league.name }}</a></li>
+    <li><a href="/{{ lang }}/league/{{ league.id }}/">{{ league.name }}</a></li>
   {% endfor %}
 </ol>

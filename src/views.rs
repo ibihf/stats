@@ -87,7 +87,7 @@ ORDER BY
   goals DESC,
   players.name;
 "#;
-  sqlx::query_as::<_, PlayerStats>(&query)
+  sqlx::query_as::<_, PlayerStats>(query)
     .bind(game.id)
     .fetch_all(pool)
     .await
@@ -106,7 +106,7 @@ WHERE players.id=$1
 ORDER BY leagues.end_date DESC
 LIMIT 1;
 "#;
-  sqlx::query_as::<_, League>(&query)
+  sqlx::query_as::<_, League>(query)
     .bind(player.id)
     .fetch_optional(pool)
     .await
@@ -155,7 +155,7 @@ SELECT
 FROM players
 WHERE id=$1;
 "#;
-  sqlx::query_as::<_, PlayerStats>(&query)
+  sqlx::query_as::<_, PlayerStats>(query)
     .bind(player.id)
     .bind(league.id)
     .fetch_one(pool)
@@ -218,11 +218,10 @@ ORDER BY
   shots.period_time ASC
 LIMIT 5;
 "#;
-  let x =sqlx::query_as::<_, GoalDetails>(&query)
-    .bind(player.id);
-    //.fetch_all(pool)
-    //.await
-  x.fetch_all(pool).await
+  sqlx::query_as::<_, GoalDetails>(query)
+    .bind(player.id)
+    .fetch_all(pool)
+    .await
 }
 
 pub async fn get_all_player_stats(pool: &PgPool, player: &Player) -> Result<PlayerStats, sqlx::Error> {
@@ -253,7 +252,7 @@ SELECT
 FROM players
 WHERE id=$1;
 "#;
-  sqlx::query_as::<_, PlayerStats>(&query)
+  sqlx::query_as::<_, PlayerStats>(query)
     .bind(player.id)
     .fetch_one(pool)
     .await
@@ -417,7 +416,7 @@ ORDER BY
 }
 
 pub async fn get_score_from_game(pool: &PgPool, game: &Game) -> Result<Vec<TeamStats>, sqlx::Error> {
-  let query = format!(r#"
+  let query = r#"
 SELECT 
   (
     SELECT COUNT(shots.id)
@@ -438,8 +437,8 @@ SELECT
 FROM games
 JOIN teams ON teams.id=games.team_home OR teams.id=games.team_away
 WHERE games.id=$1;
-"#);
-  sqlx::query_as::<_, TeamStats>(&query)
+"#;
+  sqlx::query_as::<_, TeamStats>(query)
     .bind(game.id)
     .fetch_all(pool)
     .await
@@ -473,10 +472,9 @@ ORDER BY
   goals DESC,
   players.name;
 "#;
-  let result = sqlx::query_as::<_, PlayerStats>(query)
+  sqlx::query_as::<_, PlayerStats>(query)
     .fetch_all(&pool)
-    .await;
-  result
+    .await
 }
 
 #[cfg(test)]

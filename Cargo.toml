@@ -20,6 +20,8 @@ tera = "1.18.1"
 tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros" ] }
 sqlx = { version = "0.5", features = ["macros", "postgres", "runtime-tokio-rustls", "chrono"] }
 ormx = { version = "0.10.0", features = ["postgres"] }
+serde-xml-rs = "0.6.0"
+strum = { version = "0.24.1", features = ["derive"] }
 
 [dev-dependencies]
 tokio-test = "0.4.2"

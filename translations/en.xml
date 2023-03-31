@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="urlGame">game</string>
+	<string name="urlDivision">division</string>
+	<string name="urlLeague">league</string>
+	<string name="ibihfLeagues">IBIHF Leagues</string>
+	<string name="goals">Goals</string>
+	<string name="assists">Assists</string>
+	<string name="period">Period</string>
+</resources>
