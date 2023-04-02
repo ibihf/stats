@@ -4,8 +4,42 @@ use crate::model::{
   Player,
   Game,
   League,
+  Division,
+  Period,
 };
 use serde::{Serialize, Deserialize};
+
+#[derive(FromRow, Serialize, Deserialize, Debug)]
+pub struct IihfPoints {
+  pub team_id: i32,
+  pub team_name: String,
+  pub reg_wins: i64,
+  pub reg_losses: i64,
+  pub ot_wins: i64,
+  pub ot_losses: i64,
+  pub ties: i64,
+}
+
+impl Division {
+  pub async fn team_iihf_points(&self, pool: &PgPool) -> Result<Vec<IihfPoints>, sqlx::Error> {
+    let games = Game::by_division(pool, self.id)
+      .await
+      .unwrap();
+    let mut scores = Vec::new();
+    for game in games {
+      let score = get_score_from_game(pool, &game)
+        .await
+        .unwrap();
+      let periods_len = Period::by_game(pool, game.id)
+        .await
+        .unwrap()
+        .len();
+      scores.push((periods_len, score));
+    }
+    
+    todo!()
+  }
+}
 
 #[derive(FromRow, Deserialize, Serialize, Debug)]
 pub struct TeamStats {
@@ -39,53 +73,45 @@ SELECT
     SELECT COUNT(shots.id)
     FROM shots
     JOIN periods ON periods.id=shots.period
-    WHERE shooter=players.id
-      AND goal=true
-      AND periods.game=$1
+    WHERE shots.goal=true
+      AND (shots.shooter=game_players.id
+       OR shots.assistant=game_players.id
+       OR shots.assistant_second=game_players.id)
+  ) AS points,
+  (
+    SELECT COUNT(shots.id)
+    FROM shots
+    JOIN periods ON periods.id=shots.period
+    WHERE shots.goal=true
+      AND shots.shooter=game_players.id
   ) AS goals,
   (
     SELECT COUNT(shots.id)
     FROM shots
     JOIN periods ON periods.id=shots.period
-    WHERE (assistant=players.id
-       OR assistant_second=players.id)
-       AND goal=true
-       AND periods.game=$1
+    WHERE shots.goal=true
+      AND (shots.assistant=game_players.id
+       OR shots.assistant_second=game_players.id)
   ) AS assists,
   (
+    SELECT name
+    FROM players
+    WHERE id=game_players.player
+  ) AS name
+FROM game_players 
+WHERE game_players.game=$1
+  AND (
     SELECT COUNT(shots.id)
     FROM shots
     JOIN periods ON periods.id=shots.period
-    WHERE (assistant=players.id
-       OR assistant_second=players.id
-       OR shooter=players.id)
-       AND goal=true
-       AND periods.game=$1
-  ) AS points,
-  players.name AS name
-FROM players
-JOIN shots ON shots.shooter=players.id OR shots.assistant=players.id
-JOIN periods ON periods.id=shots.period
-WHERE periods.game = $1
-GROUP BY players.id
--- exclude players who do not have any points
--- NOTE: we can NOT use the aliased column "points" here, so we need to recalculate it.
--- This should not be a performance problem because the optimizer should deal with duplicate sub-queries.
-HAVING
-  (
-    SELECT COUNT(shots.id)
-    FROM shots
-    JOIN periods ON periods.id=shots.period
-    WHERE (assistant=players.id
-       OR assistant_second=players.id
-       OR shooter=players.id)
-       AND goal=true
-       AND periods.game=$1
+    WHERE shots.goal=true
+      AND (shots.shooter=game_players.id
+       OR shots.assistant=game_players.id
+       OR shots.assistant_second=game_players.id)
   ) > 0
 ORDER BY
   points DESC,
-  goals DESC,
-  players.name;
+  goals DESC;
 "#;
   sqlx::query_as::<_, PlayerStats>(query)
     .bind(game.id)
@@ -98,12 +124,13 @@ pub async fn get_latest_league_for_player(pool: &PgPool, player: &Player) -> Res
 r#"
 SELECT leagues.*
 FROM players
-JOIN team_players ON team_players.player=players.id
-JOIN teams ON teams.id=team_players.team
+JOIN game_players ON game_players.player=players.id
+JOIN games ON games.id=game_players.game
+JOIN teams ON teams.id=game_players.team
 JOIN divisions ON divisions.id=teams.division
 JOIN leagues ON leagues.id=divisions.league
 WHERE players.id=$1
-ORDER BY leagues.end_date DESC
+ORDER BY games.end_at DESC
 LIMIT 1;
 "#;
   sqlx::query_as::<_, League>(query)
@@ -163,62 +190,41 @@ WHERE id=$1;
 }
 
 pub async fn get_latest_stats(pool: &PgPool, player: &Player) -> Result<Vec<GoalDetails>, sqlx::Error> {
-  let query = r#"
+  let query = 
+r#"
 SELECT 
-  shots.shooter AS player_id,
-  shots.assistant AS first_assist_id,
-  shots.assistant_second AS second_assist_id,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.shooter
-  ) AS player_name,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.assistant
-  ) AS first_assist_name,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.assistant_second
-  ) AS second_assist_name,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.shooter
-      AND team=shots.shooter_team
-  ) AS player_number,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.assistant
-      AND team=shots.shooter_team
-  ) AS first_assist_number,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.assistant_second
-      AND team=shots.shooter_team
-  ) AS second_assist_number,
+  players.id AS player_id,
+  p_assist.id AS first_assist_id,
+  p_assist_second.id AS second_assist_id,
+  players.name AS player_name,
+  p_assist.name AS first_assist_name,
+  p_assist_second.name AS second_assist_name,
+  game_players.player_number AS player_number,
+  gp_assist.player_number AS first_assist_number,
+  gp_assist_second.player_number AS second_assist_number,
   teams.name AS team_name,
   teams.id AS team_id,
-  shots.shooter_team AS player_team,
   shots.period_time AS time_remaining,
   period_types.id AS period_id,
   period_types.short_name AS period_short_name
 FROM shots
+JOIN game_players ON game_players.id=shots.shooter
+JOIN players ON players.id=game_players.player
+JOIN teams ON teams.id=game_players.team
+LEFT JOIN game_players gp_assist ON gp_assist.id=shots.assistant
+LEFT JOIN players p_assist ON p_assist.id=gp_assist.player
+LEFT JOIN game_players gp_assist_second ON gp_assist_second.id=shots.assistant_second
+LEFT JOIN players p_assist_second ON p_assist_second.id=gp_assist_second.id
 JOIN periods ON shots.period=periods.id
-JOIN period_types ON periods.period_type=period_types.id
-JOIN teams ON shots.shooter_team=teams.id
-WHERE shots.shooter=$1
+JOIN period_types ON period_types.id=periods.period_type
+WHERE players.id=$1
 ORDER BY
   shots.created_at DESC,
   periods.period_type DESC,
   shots.period_time ASC
 LIMIT 5;
 "#;
-  sqlx::query_as::<_, GoalDetails>(query)
+  sqlx::query_as::<_, GoalDetails>(&query)
     .bind(player.id)
     .fetch_all(pool)
     .await
@@ -227,30 +233,26 @@ LIMIT 5;
 pub async fn get_all_player_stats(pool: &PgPool, player: &Player) -> Result<PlayerStats, sqlx::Error> {
   let query =r#"
 SELECT
-  (
-    SELECT COUNT(id)
-    FROM shots
-    WHERE shots.goal=true
-      AND shots.shooter=players.id
-  ) AS goals,
-  (
-    SELECT COUNT(id)
-    FROM shots
-    WHERE shots.goal=true
-      AND (shots.assistant=players.id
-       OR shots.assistant_second=players.id)
-  ) AS assists,
-  (
-    SELECT COUNT(id)
-    FROM shots
-    WHERE shots.goal=true
-      AND (shots.shooter=players.id
-       OR shots.assistant=players.id
-       OR shots.assistant_second=players.id)
-  ) AS points,
+  COUNT(goals) AS goals,
+  COUNT(assists) AS assists,
+  COUNT(points) AS points,
   players.name AS name
 FROM players
-WHERE id=$1;
+JOIN game_players ON game_players.player=players.id
+LEFT JOIN shots points
+  ON (points.shooter=game_players.id
+  OR points.assistant=game_players.id
+  OR points.assistant_second=game_players.id)
+ AND points.goal=true
+LEFT JOIN shots goals
+  ON goals.shooter=game_players.id
+ AND goals.goal=true
+LEFT JOIN shots assists
+  ON (points.assistant=game_players.id
+  OR points.assistant_second=game_players.id)
+ AND points.goal=true
+WHERE players.id=$1
+GROUP BY players.id;
 "#;
   sqlx::query_as::<_, PlayerStats>(query)
     .bind(player.id)
@@ -266,6 +268,7 @@ pub struct GoalDetails {
   pub team_name: String,
   pub team_id: i32,
   pub time_remaining: i32,
+  pub period_id: i32,
   pub period_short_name: String,
   pub first_assist_name: Option<String>,
   pub first_assist_number: Option<i32>,
@@ -300,51 +303,30 @@ SELECT
   shots.shooter AS player_id,
   shots.assistant AS first_assist_id,
   shots.assistant_second AS second_assist_id,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.shooter
-  ) AS player_name,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.assistant
-  ) AS first_assist_name,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.assistant_second
-  ) AS second_assist_name,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.shooter
-      AND team=shots.shooter_team
-  ) AS player_number,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.assistant
-      AND team=shots.shooter_team
-  ) AS first_assist_number,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.assistant_second
-      AND team=shots.shooter_team
-  ) AS second_assist_number,
+  players.name AS player_name,
+  p_assist.name AS first_assist_name,
+  p_assist_second.name AS second_assist_name,
+  game_players.player_number AS player_number,
+  gp_assist.player_number AS first_assist_number,
+  gp_assist_second.player_number AS second_assist_number,
   teams.name AS team_name,
   teams.id AS team_id,
-  shots.shooter_team AS player_team,
   shots.period_time AS time_remaining,
   period_types.id AS period_id,
   period_types.short_name AS period_short_name
 FROM shots
-JOIN periods ON shots.period=periods.id
-JOIN period_types ON periods.period_type=period_types.id
-JOIN teams ON shots.shooter_team=teams.id
+JOIN game_players ON game_players.id=shots.shooter
+JOIN players ON players.id=game_players.player
+LEFT JOIN game_players gp_assist ON gp_assist.id=shots.assistant
+LEFT JOIN players p_assist ON p_assist.id=gp_assist.player
+LEFT JOIN game_players gp_assist_second ON gp_assist.id=shots.assistant_second
+LEFT JOIN players p_assist_second ON p_assist.id=gp_assist_second.player
+JOIN teams ON teams.id=game_players.team
+JOIN periods ON periods.id=shots.period
+JOIN period_types ON period_types.id=periods.period_type
+JOIN games ON games.id=periods.game
 WHERE shots.goal=true
-  AND periods.game=$1
+  AND games.id=$1
 ORDER BY
   periods.period_type ASC,
   shots.period_time DESC;
@@ -362,49 +344,27 @@ SELECT
   shots.assistant AS first_assist_id,
   shots.assistant_second AS second_assist_id,
   shots.goal AS is_goal,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.shooter
-  ) AS player_name,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.assistant
-  ) AS first_assist_name,
-  (
-    SELECT name
-    FROM players
-    WHERE id=shots.assistant_second
-  ) AS second_assist_name,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.shooter
-      AND team=shots.shooter_team
-  ) AS player_number,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.assistant
-      AND team=shots.shooter_team
-  ) AS first_assist_number,
-  (
-    SELECT player_number
-    FROM team_players
-    WHERE player=shots.assistant_second
-      AND team=shots.shooter_team
-  ) AS second_assist_number,
+  players.name AS player_name,
+  p_assistant.name AS first_assist_name,
+  p_assistant_second.name AS second_assist_name,
+  game_players.player_number AS player_number,
+  gp_assistant.player_number AS first_assist_number,
+  gp_assistant_second.player_number AS second_assist_number,
   teams.name AS team_name,
   teams.id AS team_id,
-  shots.shooter_team AS player_team,
   shots.period_time AS time_remaining,
   period_types.id AS period_id,
   period_types.short_name AS period_short_name
 FROM shots
+JOIN game_players ON game_players.id=shots.shooter
+JOIN players ON players.id=game_players.player
+JOIN teams ON teams.id=game_players.team
+LEFT JOIN game_players gp_assistant ON gp_assistant.id=shots.assistant
+LEFT JOIN players p_assistant ON p_assistant.id=gp_assistant.player
+LEFT JOIN game_players gp_assistant_second ON gp_assistant_second.id=shots.assistant_second
+LEFT JOIN players p_assistant_second ON p_assistant_second.id=gp_assistant_second.player
 JOIN periods ON shots.period=periods.id
 JOIN period_types ON periods.period_type=period_types.id
-JOIN teams ON shots.shooter_team=teams.id
 WHERE periods.game=$1
 ORDER BY
   periods.period_type ASC,
@@ -418,25 +378,16 @@ ORDER BY
 pub async fn get_score_from_game(pool: &PgPool, game: &Game) -> Result<Vec<TeamStats>, sqlx::Error> {
   let query = r#"
 SELECT 
-  (
-    SELECT COUNT(shots.id)
-    FROM shots
-    JOIN periods ON periods.id=shots.period
-    WHERE periods.game=$1
-      AND shots.goal=true
-      AND shots.shooter_team=teams.id
-  ) AS goals,
-  (
-    SELECT COUNT(shots.id)
-    FROM shots
-    JOIN periods ON periods.id=shots.period
-    WHERE periods.game=$1
-      AND shooter_team=teams.id
-  ) AS shots,
+  COUNT(CASE WHEN shots.goal = true THEN shots.id END) AS goals,
+  COUNT(shots.id) AS shots,
   teams.name AS name
 FROM games
-JOIN teams ON teams.id=games.team_home OR teams.id=games.team_away
-WHERE games.id=$1;
+JOIN periods ON periods.game=games.id
+JOIN shots ON shots.period=periods.id
+JOIN game_players ON game_players.id=shots.shooter
+JOIN teams ON teams.id=game_players.team
+WHERE games.id=$1
+GROUP BY teams.id;
 "#;
   sqlx::query_as::<_, TeamStats>(query)
     .bind(game.id)
@@ -480,6 +431,7 @@ ORDER BY
 #[cfg(test)]
 mod tests {
   use std::env;
+  use ormx::Table;
   use crate::model::{
     Game,
     Player,
@@ -495,14 +447,27 @@ mod tests {
     get_league_player_stats,
     get_all_player_stats,
     get_latest_stats,
+    get_play_by_play_from_game,
   };
+  
+  #[test]
+  fn check_play_by_play() {
+    tokio_test::block_on(async move {
+      let pool = db_connect().await;
+      let game = Game::get(&pool, 3)
+        .await
+        .unwrap();
+      let pbp = get_play_by_play_from_game(&pool, &game)
+        .await
+        .unwrap();
+    })
+  }
 
   #[test]
   fn get_latest_stats_of_player() {
     tokio_test::block_on(async move {
       let pool = db_connect().await;
-      let player = sqlx::query_as::<_, Player>("SELECT * FROM id=2;")
-        .fetch_one(&pool)
+      let player = Player::get(&pool, 2)
         .await
         .unwrap();
       let latest = get_latest_stats(&pool, &player)
@@ -561,7 +526,7 @@ mod tests {
   fn check_score_details_from_game() {
     tokio_test::block_on(async move {
       let pool = db_connect().await;
-      let game = sqlx::query_as::<_, Game>("SELECT * FROM games WHERE id=1;")
+      let game = sqlx::query_as::<_, Game>("SELECT * FROM games WHERE id=3;")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -629,17 +594,17 @@ SELECT
   teams.name AS scorer_team_name,
   players.name AS scorer_name,
   positions.name AS position,
-  team_players.player_number AS scorer_number,
+  game_players.player_number AS scorer_number,
   shots.period_time AS period_time_left,
   period_types.name AS period_name
 FROM
   shots
-JOIN teams ON teams.id=shots.shooter_team
-JOIN players ON players.id=shots.shooter
-JOIN team_players ON team_players.player=players.id AND team_players.team=teams.id
+JOIN game_players ON game_players.id=shots.shooter
+JOIN players ON players.id=game_players.player
+JOIN teams ON teams.id=game_players.team
 JOIN periods ON periods.id=shots.period
 JOIN period_types ON period_types.id=periods.period_type
-JOIN positions ON positions.id=team_players.position;
+JOIN positions ON positions.id=game_players.position;
 "#;
       let result = sqlx::query_as::<_, Notification>(query)
         .fetch_one(&pool)

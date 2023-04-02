@@ -2,7 +2,7 @@
 {% if games.len() > 0 %}
 <ol aria-labelledby="games">
   {% for game in games %}
-    <li><a href="/game/{{ game.id }}/">{{ game.name }}</a></li>
+    <li><a href="/en/game/{{ game.id }}/">{{ game.name }}</a></li>
   {% endfor %}
 </ol>
 {% else %}

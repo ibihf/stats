@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS games (
   division INTEGER NOT NULL,
   team_home INTEGER NOT NULL,
   team_away INTEGER NOT NULL,
+  start_at TIMESTAMPTZ NOT NULL,
+  end_at TIMESTAMPTZ NOT NULL,
   -- home and away teams need to actually be teams
   CONSTRAINT team_home_fk
     FOREIGN KEY(team_home)

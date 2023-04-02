@@ -1,6 +1,6 @@
 use sqlx::FromRow;
 use sqlx::types::chrono::{DateTime, Utc};
-use chrono::serde::{ts_seconds, ts_seconds_option};
+use chrono::serde::ts_seconds;
 use serde::{Serialize, Deserialize};
 
 pub trait TableName {
@@ -20,19 +20,11 @@ pub struct League {
   #[ormx(default)]
   pub id: i32,
   pub name: String,
-  #[serde(with = "ts_seconds")]
-  pub start_date: DateTime<Utc>,
-  #[serde(with = "ts_seconds_option")]
-  pub end_date: Option<DateTime<Utc>>,
 }
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
 #[ormx(table_name = "leagues", table = League, id = "id")]
 pub struct NewLeague {
   pub name: String,
-  #[serde(with = "ts_seconds")]
-  pub start_date: DateTime<Utc>,
-  #[serde(with = "ts_seconds_option")]
-  pub end_date: Option<DateTime<Utc>>,
 }
 
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
@@ -102,7 +94,6 @@ pub struct NewPlayer {
 pub struct Shot {
   #[ormx(default)]
   pub id: i32,
-  pub shooter_team: i32,
   pub shooter: i32,
   pub goalie: i32,
   pub assistant: Option<i32>,
@@ -118,13 +109,14 @@ pub struct Shot {
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
-#[ormx(table = "team_players", id = id, insertable, deletable)]
-pub struct TeamPlayer {
+#[ormx(table = "game_players", id = id, insertable, deletable)]
+pub struct GamePlayer {
   #[ormx(default)]
   pub id: i32,
   pub team: i32,
   pub player: i32,
   pub position: i32,
+  pub game: i32,
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
@@ -139,19 +131,29 @@ pub struct Game {
   pub team_away: i32,
 }
 
-impl_table_name!(TeamPlayer, "team_players");
+#[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
+#[ormx(table = "periods", id = id, insertable, deletable)]
+pub struct Period {
+  pub id: i32,
+  pub period_type: i32,
+  #[ormx(get_many(i32))]
+  pub game: i32,
+}
+
+impl_table_name!(GamePlayer, "game_players");
 impl_table_name!(Player, "players");
 impl_table_name!(League, "leagues");
 impl_table_name!(Division, "divisions");
 impl_table_name!(Team, "teams");
 impl_table_name!(Shot, "shots");
 impl_table_name!(Game, "games");
+impl_table_name!(Period, "periods");
 
 #[cfg(test)]
 mod tests {
   use std::env;
   use crate::model::{
-    TeamPlayer,
+    GamePlayer,
     Player,
     League,
     Division,
@@ -207,7 +209,7 @@ mod tests {
       }
     }
   }
-  generate_select_test!(TeamPlayer, select_team_player);
+  generate_select_test!(GamePlayer, selec_game_player);
   generate_select_test!(Player, select_player);
   generate_select_test!(League, select_league);
   generate_select_test!(Division, select_division);

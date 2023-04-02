@@ -5,14 +5,13 @@ mod filters;
 mod translations;
 
 use translations::{
-	TranslatedKey,
 	SupportedLanguage,
 };
 use crate::model::{
   League,
   Team,
   Division,
-  TeamPlayer,
+  GamePlayer,
   Player,
   Shot,
   Game,
@@ -45,7 +44,6 @@ use axum::{
   },
   response::{
     Json,
-    Html,
     IntoResponse,
   },
   routing::get,
@@ -233,7 +231,7 @@ async fn league_html(State(server_config): State<ServerState>, Path(lang): Path<
   (StatusCode::OK, leagues_template)
 }
 
-async fn divisions_for_league_html(State(server_config): State<ServerState>, Path(league_id): Path<i32>, Path(lang): Path<SupportedLanguage>) -> impl IntoResponse {
+async fn divisions_for_league_html(State(server_config): State<ServerState>, Path((lang,league_id)): Path<(SupportedLanguage, i32)>) -> impl IntoResponse {
   let league = League::get(&*server_config.db_pool, league_id)
     .await
     .unwrap();
@@ -248,7 +246,7 @@ async fn divisions_for_league_html(State(server_config): State<ServerState>, Pat
   (StatusCode::OK, html)
 }
 
-async fn games_for_division_html(State(server_config): State<ServerState>, Path(division_id): Path<i32>, Path(lang): Path<SupportedLanguage>) -> impl IntoResponse {
+async fn games_for_division_html(State(server_config): State<ServerState>, Path((lang,division_id)): Path<(SupportedLanguage,i32)>) -> impl IntoResponse {
   let division = Division::get(&*server_config.db_pool, division_id)
     .await
     .unwrap();
@@ -262,7 +260,7 @@ async fn games_for_division_html(State(server_config): State<ServerState>, Path(
   };
   (StatusCode::OK, games_template)
 }
-async fn score_for_game_html(State(server_config): State<ServerState>, Path(game_id): Path<i32>, Path(lang): Path<SupportedLanguage>) -> impl IntoResponse {
+async fn score_for_game_html(State(server_config): State<ServerState>, Path((lang,game_id)): Path<(SupportedLanguage, i32)>) -> impl IntoResponse {
   let game = sqlx::query_as::<_, Game>(
     "SELECT * FROM games WHERE id = $1;"
   )
@@ -318,9 +316,9 @@ macro_rules! impl_all_query_types {
 }
 
 impl_all_query_types!(
-  TeamPlayer,
-  team_player_all,
-  team_player_id
+  GamePlayer,
+  game_player_all,
+  game_player_id
 );
 impl_all_query_types!(
   Player,
