@@ -21,13 +21,7 @@ use views::{
   PlayerStats,
   TeamStats,
   ShotDetails,
-  get_score_from_game,
-  get_box_score_from_game,
   get_play_by_play_from_game,
-  get_goals_from_game,
-  get_latest_league_for_player,
-  get_league_player_stats,
-  get_all_player_stats,
 };
 
 use sqlx::{
@@ -168,14 +162,14 @@ async fn player_from_name(State(server_config): State<ServerState>, Path((lang,n
   let player = Player::from_name_case_insensitive(&server_config.db_pool, name)
     .await
     .unwrap();
-  let latest_league = get_latest_league_for_player(&server_config.db_pool, &player)
+  let latest_league = Player::latest_league(&server_config.db_pool, player.id)
     .await
     .unwrap()
     .unwrap();
-  let latest_league_stats = get_league_player_stats(&server_config.db_pool, &player, &latest_league)
+  let latest_league_stats = League::player_stats(&server_config.db_pool, player.id, latest_league.id)
     .await
     .unwrap();
-  let lifetime_stats = get_all_player_stats(&server_config.db_pool, &player)
+  let lifetime_stats = Player::lifetime_stats(&server_config.db_pool, player.id)
     .await
     .unwrap();
   let html = PlayerPageTemplate {
@@ -272,11 +266,11 @@ async fn score_for_game_html(State(server_config): State<ServerState>, Path((lan
     .await
     .unwrap();
   let pbp = get_play_by_play_from_game(&server_config.db_pool, &game).await.unwrap();
-  let score = get_score_from_game(&server_config.db_pool, &game).await.unwrap();
+  let score = Game::score(&server_config.db_pool, game.id).await.unwrap();
   let score_html = TeamGameStatsTemplate { teams: score, lang };
-  let goal_details = get_box_score_from_game(&server_config.db_pool, &game).await.unwrap();
+  let goal_details = Game::box_score(&server_config.db_pool, game.id).await.unwrap();
   let goal_details_html = IndividualGamePointsTableTemplate { players: goal_details, lang };
-  let box_score = get_goals_from_game(&server_config.db_pool, &game).await.unwrap();
+  let box_score = Game::goals(&server_config.db_pool, game.id).await.unwrap();
   let box_score_html = BoxScoreTemplate { goals: box_score, lang };
   let pbp_html = ShotsTableTemplate {
     shots: pbp,
