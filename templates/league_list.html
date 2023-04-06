@@ -1,6 +1,12 @@
+{% extends "master.html" %}
+
+{% block title %}Leagues{% endblock %}
+
+{% block content %}
 <h1 id="leagues">{{ heading }}</h1>
 <ol aria-labelledby="leagues">
   {% for league in leagues %}
     <li><a href="/{{ lang }}/league/{{ league.id }}/">{{ league.name }}</a></li>
   {% endfor %}
 </ol>
+{% endblock %}

@@ -1,10 +1,16 @@
-<h1 id="games">Games for {{ division.name }}</h1>
-{% if games.len() > 0 %}
-<ol aria-labelledby="games">
-  {% for game in games %}
-    <li><a href="/en/game/{{ game.id }}/">{{ game.name }}</a></li>
-  {% endfor %}
-</ol>
-{% else %}
-<p>No games have been recorded.</p>
-{% endif %}
+{% extends "master.html" %}
+
+{% block title %}Games{% endblock %}
+
+{% block content %}
+	<h1 id="games">Games for {{ division.name }}</h1>
+	{% if games.len() > 0 %}
+	<ol aria-labelledby="games">
+		{% for game in games %}
+			<li><a href="/en/game/{{ game.id }}/">{{ game.name }}</a></li>
+		{% endfor %}
+	</ol>
+	{% else %}
+	<p>No games have been recorded.</p>
+	{% endif %}
+{% endblock %}

@@ -1,3 +1,8 @@
+{% extends "master.html" %}
+
+{% block title %}{{ game.name }}{% endblock %}
+
+{% block content %}
 <h1>{{ game.name }} of the {{ division.name }}</h1>
 <h2>Team</h2>
 {{ team_stats|safe }}
@@ -7,3 +12,4 @@
 {{ box_score|safe }}
 <h2>Play-by-Play</h2>
 {{ play_by_play|safe }}
+{% endblock %}

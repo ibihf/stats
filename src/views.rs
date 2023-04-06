@@ -20,7 +20,7 @@ pub struct TeamStats {
 pub struct IihfGameStats {
   pub team_name: String,
   pub team_id: i32,
-  pub points: i64,
+  pub points: i32,
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug)]
@@ -109,20 +109,106 @@ impl Game {
       .fetch_all(pool)
       .await
   }
-  /// Returns the number of points using IIHF scoring rules for each team.
-  pub async fn iihf_score(pool: &PgPool, game_id: i32) -> Result<Vec<IihfGameStats>, sqlx::Error> {
+  pub async fn iihf_stats(pool: &PgPool, game_id: i32) -> Result<Vec<IihfGameStats>, sqlx::Error> {
     let query = r#"
-  SELECT 
-    COUNT(CASE WHEN shots.goal = true THEN shots.id END) AS points,
-    teams.id AS team_id,
-    teams.name AS team_name
-  FROM games
+	SELECT
+		(CASE WHEN
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id=teams.id
+				THEN shots.id
+				END) >
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id!=teams.id
+				THEN shots.id
+				END)
+			AND (SELECT COUNT(id) FROM periods WHERE periods.game=games.id) <= 3
+		THEN 1
+		ELSE 0
+		END) AS reg_wins,
+		(CASE WHEN
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id=teams.id
+				THEN shots.id
+				END) <
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id!=teams.id
+				THEN shots.id
+				END)
+			AND (SELECT COUNT(id) FROM periods WHERE periods.game=games.id) <= 3
+		THEN 1
+		ELSE 0
+		END) AS reg_losses,
+		(CASE WHEN
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id=teams.id
+				THEN shots.id
+				END) >
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id!=teams.id
+				THEN shots.id
+				END)
+			AND (SELECT COUNT(id) FROM periods WHERE periods.game=games.id) > 3
+		THEN 1
+		ELSE 0
+		END) AS ot_wins,
+		(CASE WHEN
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id=teams.id
+				THEN shots.id
+				END) <
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id!=teams.id
+				THEN shots.id
+				END)
+			AND (SELECT COUNT(id) FROM periods WHERE periods.game=games.id) > 3
+		THEN 1
+		ELSE 0
+		END) AS ot_losses,
+		(CASE WHEN
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id=teams.id
+				THEN shots.id
+				END) =
+			COUNT(CASE WHEN shots.goal=true
+				AND scoring_team.id!=teams.id
+				THEN shots.id
+				END)
+		THEN 1
+		ELSE 0
+		END) AS ties
+	FROM games
   JOIN periods ON periods.game=games.id
   JOIN shots ON shots.period=periods.id
   JOIN game_players ON game_players.id=shots.shooter
-  JOIN teams ON teams.id=game_players.team
+  JOIN teams scoring_team
+    ON scoring_team.id=game_players.team
+  JOIN teams
+    ON teams.id=games.team_home
+    OR teams.id=games.team_away
+ WHERE games.id=4
+ GROUP BY teams.id,games.id;
+  "#;
+    sqlx::query_as::<_, IihfGameStats>(query)
+      .bind(game_id)
+      .fetch_all(pool)
+      .await
+  }
+  /// Returns the number of points using IIHF scoring rules for each team.
+	/// NOTE: The algorithm used here requires that a 4th period is the "overtime";
+	/// it does not check if there was only two periods, followed by an overtime.
+	/// This should be sufficient for most.
+  pub async fn iihf_score(pool: &PgPool, game_id: i32) -> Result<Vec<IihfGameStats>, sqlx::Error> {
+    let query = r#"
+  SELECT 
+		calculate_iihf_points(games.id, teams.id) AS points,
+    teams.name AS team_name,
+		teams.id AS team_id
+  FROM games
+	JOIN teams
+		ON teams.id=games.team_home
+		OR teams.id=games.team_away
   WHERE games.id=$1
-  GROUP BY teams.id;
+  ORDER BY points;
   "#;
     sqlx::query_as::<_, IihfGameStats>(query)
       .bind(game_id)
@@ -493,14 +579,15 @@ mod tests {
   fn check_iihf_score() {
     tokio_test::block_on(async move{
       let pool = db_connect().await;
-      let game = Game::get(&pool, 1)
+      let game = Game::get(&pool, 4)
         .await
         .unwrap();
       let score = Game::iihf_score(&pool, game.id)
         .await
         .unwrap();
-      assert_eq!(score.get(0).unwrap().points, 3);
+      assert_eq!(score.get(0).unwrap().points, 2);
       assert_eq!(score.get(0).unwrap().team_name, "Bullseye");
+      assert_eq!(score.get(1).unwrap().points, 2);
     })
   }
   

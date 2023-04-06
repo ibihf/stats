@@ -1,0 +1,99 @@
+-- Add up migration script here
+--CREATE FUNCTION periods(game_id INTEGER)
+--RETURNS INTEGER AS $$
+--BEGIN
+--  RETURN (SELECT COUNT(id) FROM periods WHERE periods.game=game_id);
+--END;
+--$$ LANGUAGE plpgsql;
+--
+--CREATE FUNCTION goals(game_id INTEGER, team_id INTEGER)
+--RETURNS INTEGER AS $$
+--DECLARE
+--	goals INTEGER;
+--BEGIN
+--	IF NOT EXISTS (SELECT * FROM games WHERE games.id=game_id) THEN
+--		RAISE EXCEPTION 'The game does not exist.';
+--	END IF;
+--	IF NOT EXISTS (SELECT * FROM teams WHERE teams.id=team_id) THEN
+--		RAISE EXCEPTION 'The team does not exist.';
+--	END IF;
+--	IF NOT EXISTS (SELECT * FROM games JOIN teams ON teams.id=games.team_home OR teams.id=team_away WHERE games.id=game_id) THEN
+--		RAISE EXCEPTION 'The team specified did not play this game.';
+--	END IF;
+--
+--  SELECT
+--    COUNT(shots.id)
+--	INTO
+--		goals
+--	FROM shots
+--	JOIN game_players
+--		ON game_players.id=shots.shooter
+-- 	JOIN periods
+--	  ON periods.id=shots.period
+-- WHERE shots.goal=true
+-- 	 AND game_players.team=team_id
+--	 AND periods.game=game_id;
+-- -- return 0 if not goals are found given the team and the game
+-- RETURN COALESCE(goals, 0);
+--END;
+--$$ LANGUAGE plpgsql;
+--
+--CREATE OR REPLACE FUNCTION calculate_iihf_stats(game_id INT, team_id INT)
+--RETURNS TABLE (
+--  reg_win INT,
+--  reg_loss INT,
+--  ot_win INT,
+--  ot_loss INT,
+--  tie INT,
+--	game INT,
+--	team INT
+--) AS $$
+--DECLARE
+--	opponent_team_id INTEGER;
+--BEGIN
+--	IF NOT EXISTS (SELECT * FROM games WHERE games.id=game_id) THEN
+--		RAISE EXCEPTION 'The game does not exist.';
+--	END IF;
+--	IF NOT EXISTS (SELECT * FROM teams WHERE teams.id=team_id) THEN
+--		RAISE EXCEPTION 'The team does not exist.';
+--	END IF;
+--	IF NOT EXISTS (SELECT * FROM games JOIN teams ON teams.id=games.team_home OR teams.id=team_away WHERE games.id=game_id) THEN
+--		RAISE EXCEPTION 'The team specified did not play this game.';
+--	END IF;
+--
+--	SELECT
+--		teams.id
+--	INTO
+--		opponent_team_id
+--	FROM games
+--	JOIN teams
+--	  ON (teams.id=games.team_home
+--	  OR teams.id=games.team_away)
+--	WHERE games.id=game_id
+--		AND teams.id!=team_id;
+--
+--	RETURN QUERY
+--	SELECT
+--		(CASE WHEN goals(game_id, team_id) > goals(game_id, opponent_team_id) AND periods(game_id) <= 3 THEN 1 ELSE 0 END) AS reg_win,
+--		(CASE WHEN goals(game_id, team_id) < goals(game_id, opponent_team_id) AND periods(game_id) <= 3 THEN 1 ELSE 0 END) AS reg_loss,
+--		(CASE WHEN goals(game_id, team_id) > goals(game_id, opponent_team_id) AND periods(game_id) > 3 THEN 1 ELSE 0 END) AS ot_win,
+--		(CASE WHEN goals(game_id, team_id) < goals(game_id, opponent_team_id) AND periods(game_id) > 3 THEN 1 ELSE 0 END) AS ot_loss,
+--		(CASE WHEN goals(game_id, team_id) = goals(game_id, opponent_team_id) THEN 1 ELSE 0 END) AS tie,
+--		game_id AS game,
+--		team_id AS team;
+--END;
+--$$ LANGUAGE plpgsql;
+--
+--CREATE OR REPLACE FUNCTION calculate_iihf_points(game_id INT, team_id INT)
+--RETURNS INTEGER AS $$
+--BEGIN
+--	RETURN (
+--		SELECT 
+--			(iihs_stats.reg_win * 3) +
+--			(iihs_stats.reg_loss * 0) +
+--			(iihs_stats.ot_win * 2) +
+--			(iihs_stats.ot_loss * 1) +
+--			(iihs_stats.tie * 2) AS points
+--		FROM calculate_iihs_stats_stats(game_id, team_id) iihs_stats);
+--END;
+--$$ LANGUAGE plpgsql;

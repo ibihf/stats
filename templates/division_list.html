@@ -1,6 +1,12 @@
+{% extends "master.html" %}
+
+{% block title %}Divisions{% endblock %}
+
+{% block content %}
 <h1 id="first-heading">Divisions for the {{ league.name }}</h1>
 <ul aria-labelledby="first-heading">
   {% for division in divisions %}
     <li><a href="/en/division/{{ division.id }}/">{{ division.name }}</a></li>
   {% endfor %}
 </ul>
+{% endblock %}

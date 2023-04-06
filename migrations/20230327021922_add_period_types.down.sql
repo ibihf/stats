@@ -1,1 +1,2 @@
-DELETE FROM period_types;
+DELETE FROM period_types
+WHERE id BETWEEN 1 AND 13;

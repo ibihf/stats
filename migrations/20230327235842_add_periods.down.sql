@@ -1,1 +1,2 @@
-DELETE FROM periods;
+DELETE FROM periods
+WHERE id BETWEEN 1 AND 12;
