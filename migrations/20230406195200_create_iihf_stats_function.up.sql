@@ -22,24 +22,13 @@ BEGIN
 		RAISE EXCEPTION 'The team specified did not play this game.';
 	END IF;
 
-	SELECT
-		teams.id
-	INTO
-		opponent_team_id
-	FROM games
-	JOIN teams
-	  ON (teams.id=games.team_home
-	  OR teams.id=games.team_away)
-	WHERE games.id=game_id
-		AND teams.id!=team_id;
-
 	RETURN QUERY
 	SELECT
-		(CASE WHEN goals(game_id, team_id) > goals(game_id, opponent_team_id) AND periods(game_id) <= 3 THEN 1 ELSE 0 END) AS reg_win,
-		(CASE WHEN goals(game_id, team_id) < goals(game_id, opponent_team_id) AND periods(game_id) <= 3 THEN 1 ELSE 0 END) AS reg_loss,
-		(CASE WHEN goals(game_id, team_id) > goals(game_id, opponent_team_id) AND periods(game_id) > 3 THEN 1 ELSE 0 END) AS ot_win,
-		(CASE WHEN goals(game_id, team_id) < goals(game_id, opponent_team_id) AND periods(game_id) > 3 THEN 1 ELSE 0 END) AS ot_loss,
-		(CASE WHEN goals(game_id, team_id) = goals(game_id, opponent_team_id) THEN 1 ELSE 0 END) AS tie,
+		reg_win(game_id, team_id) AS reg_win,
+		reg_loss(game_id, team_id) AS reg_loss,
+		ot_win(game_id, team_id) AS ot_win,
+		ot_loss(game_id, team_id) AS ot_loss,
+		tie(game_id, team_id) AS tie,
 		game_id AS game,
 		team_id AS team;
 END;

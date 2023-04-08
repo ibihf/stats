@@ -4,11 +4,11 @@ RETURNS INTEGER AS $$
 BEGIN
   RETURN (
     SELECT
-      (iihs_stats.reg_win * 3) +
-      (iihs_stats.reg_loss * 0) +
-      (iihs_stats.ot_win * 2) +
-      (iihs_stats.ot_loss * 1) +
-      (iihs_stats.tie * 2) AS points
-    FROM calculate_iihs_stats_stats(game_id, team_id) iihs_stats);
+      (iihf_stats.reg_win * 3) +
+      (iihf_stats.reg_loss * 0) +
+      (iihf_stats.ot_win * 2) +
+      (iihf_stats.ot_loss * 1) +
+      (iihf_stats.tie * 2) AS points
+    FROM iihf_stats(game_id, team_id) iihf_stats);
 END;
 $$ LANGUAGE plpgsql;

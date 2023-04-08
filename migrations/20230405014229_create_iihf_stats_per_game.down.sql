@@ -1,2 +1,0 @@
--- Add down migration script here
---DROP FUNCTION game_results(INTEGER, INTEGER);
