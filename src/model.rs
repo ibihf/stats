@@ -15,6 +15,14 @@ macro_rules! impl_table_name {
 }
 
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
+#[ormx(table = "supported_languages", id = id, insertable, deletable)]
+pub struct Language {
+  pub id: i32,
+  pub native_name: String,
+  pub short_name: String,
+}
+
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
 #[ormx(table = "leagues", id = id, insertable, deletable)]
 pub struct League {
   #[ormx(default)]

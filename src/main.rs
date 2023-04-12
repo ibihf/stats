@@ -1,12 +1,37 @@
 mod db;
 mod filters;
 mod model;
-mod translations;
 mod views;
 
-use crate::model::{Division, Game, GamePlayer, League, Player, Shot, Team};
-use translations::SupportedLanguage;
+use crate::model::{Division, Game, GamePlayer, League, Player, Shot, Team, Language};
+
+use serde::{Serialize, Deserialize};
+use derive_more::Display;
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Display)]
+pub enum SupportedLanguage {
+  #[serde(rename="en-ca")]
+  #[display(fmt="en-ca")]
+  English,
+  #[serde(rename="fr-ca")]
+  #[display(fmt="fr-ca")]
+  French,
+}
+/*
+impl std::fmt::Display for SupportedLanguage {
+  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    match self {
+      Self::English => write!(fmt, "en-ca"),
+      Self::French => write!(fmt, "fr-ca"),
+    }
+  }
+}
+*/
+
 use views::{GoalDetails, PlayerStats, ShotDetails, TeamStats, IihfStatsI64};
+
+use rust_i18n::t;
+rust_i18n::i18n!("translations");
 
 use askama::Template;
 use axum::{
@@ -27,6 +52,12 @@ use std::sync::Arc;
 struct HelloTemplate<'a> {
     name: &'a str,
     years: i32,
+}
+
+#[derive(Template)]
+#[template(path = "language_list.html")]
+struct LanguageListTemplate {
+  pub languages: Vec<Language>,
 }
 
 #[derive(Template)]
@@ -117,13 +148,14 @@ pub struct ServerState {
 
 #[tokio::main]
 async fn main() {
+    println!("{}", t!("hello", locale="fr"));
+    println!("{:?}", available_locales());
     let pool = db::connect().await;
-    let xml_en = translations::en_lang();
-    let xml_fr = translations::fr_lang();
     let state = ServerState {
         db_pool: Arc::new(pool),
     };
     let router = Router::new()
+        .route("/", get(language_list))
         .route("/:lang/", get(league_html))
         .route("/:lang/shots/", get(shots_all))
         .route("/:lang/test/", get(test_template))
@@ -138,6 +170,18 @@ async fn main() {
         .serve(router.into_make_service())
         .await
         .unwrap();
+}
+
+async fn language_list(
+  State(server_config): State<ServerState>,
+) -> impl IntoResponse {
+  let languages = Language::all(&*server_config.db_pool)
+    .await
+    .unwrap();
+  let lang_list_tmpl = LanguageListTemplate {
+    languages
+  };
+  (StatusCode::OK, lang_list_tmpl)
 }
 
 async fn player_from_name(

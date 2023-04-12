@@ -22,6 +22,21 @@ sqlx = { version = "0.5", features = ["macros", "postgres", "runtime-tokio-rustl
 ormx = { version = "0.10.0", features = ["postgres"] }
 serde-xml-rs = "0.6.0"
 strum = { version = "0.24.1", features = ["derive"] }
+rust-i18n = "1.1.4"
+once_cell = "1.17.1"
+derive_more = "0.99.17"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
+
+[package.metadata.i18n]
+# The available locales for your application, default: ["en"].
+available-loCAles = ["en-CA", "fr-CA"]
+
+# The default locale, default: "en".
+default-locale = "en-CA"
+
+# Path for your translations YAML file, default: "locales".
+# This config for let `cargo i18n` command line tool know where to find your translations.
+# You must keep this path is same as the path you pass to `rust_i18n::i18n!` method.
+load-path = "translations"
