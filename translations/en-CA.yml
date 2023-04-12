@@ -1,0 +1,5 @@
+test: 123
+welcome: Welcome!
+test2: 123123
+message: Can we %{go} to the store?
+hello: Hello World

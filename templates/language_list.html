@@ -1,0 +1,16 @@
+{% extends "master.html" %}
+
+{% block title %}Select Your Language{% endblock %}
+
+{% block content %}
+  <h1>Select Your Language</h1>
+  {% if languages.len() > 0 %}
+    <ul>
+    {% for lang in languages %}
+      <li><a href="/{{ lang.short_name }}/">{{ lang.native_name }}</a></li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p>No languages were found. This is probably very.</p>
+  {% endif %}
+{% endblock %}
