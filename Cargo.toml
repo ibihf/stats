@@ -18,23 +18,25 @@ sql-builder = "3.1.1"
 static_assertions = "1.1.0"
 tera = "1.18.1"
 tokio = { version = "1.26.0", features = ["rt-multi-thread", "macros" ] }
-sqlx = { version = "0.5", features = ["macros", "postgres", "runtime-tokio-rustls", "chrono"] }
-ormx = { version = "0.10.0", features = ["postgres"] }
+sqlx = { version = "0.6", default-features = false, features = ["runtime-tokio-rustls", "macros", "postgres", "chrono"] }
+ormx = { git = "https://github.com/NyxCode/ormx", default-features = false, features = ["postgres"] }
 serde-xml-rs = "0.6.0"
 strum = { version = "0.24.1", features = ["derive"] }
 rust-i18n = "1.1.4"
 once_cell = "1.17.1"
 derive_more = "0.99.17"
+const_format = "0.2.30"
+strum_macros = "0.24.3"
 
 [dev-dependencies]
 tokio-test = "0.4.2"
 
 [package.metadata.i18n]
 # The available locales for your application, default: ["en"].
-available-loCAles = ["en-CA", "fr-CA"]
+available-loCAles = ["en-ca", "fr-ca"]
 
 # The default locale, default: "en".
-default-locale = "en-CA"
+default-locale = "en-ca"
 
 # Path for your translations YAML file, default: "locales".
 # This config for let `cargo i18n` command line tool know where to find your translations.
