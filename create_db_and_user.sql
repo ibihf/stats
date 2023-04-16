@@ -1,0 +1,3 @@
+CREATE DATABASE ibihf;
+CREATE USER ibihf WITH PASSWORD 'ibihf';
+ALTER DATABASE ibihf OWNER TO ibihf;
