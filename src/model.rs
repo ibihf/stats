@@ -17,6 +17,7 @@ macro_rules! impl_table_name {
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
 #[ormx(table = "supported_languages", id = id, insertable, deletable)]
 pub struct Language {
+  #[ormx(default)]
   pub id: i32,
   pub native_name: String,
   pub short_name: String,
@@ -156,11 +157,15 @@ impl_table_name!(Team, "teams");
 impl_table_name!(Shot, "shots");
 impl_table_name!(Game, "games");
 impl_table_name!(Period, "periods");
+impl_table_name!(Language, "supported_languages");
 
 #[cfg(test)]
 mod tests {
+  use ormx::Table;
   use std::env;
+  use crate::languages::SupportedLanguage;
   use crate::model::{
+    Language,
     GamePlayer,
     Player,
     League,
@@ -170,6 +175,24 @@ mod tests {
     TableName,
     Game,
   };
+  use strum::{
+    EnumCount,
+    IntoEnumIterator,
+  };
+
+  #[test]
+  fn db_languages_match_supported_langauges_enum() {
+    tokio_test::block_on(async move {
+      let pool = db_connect().await;
+      let db_langs = Language::all(&pool).await.unwrap();
+      assert_eq!(db_langs.len(), SupportedLanguage::COUNT);
+      for lang_name in SupportedLanguage::iter() {
+        let found = db_langs.iter().find(|db_lang| db_lang.short_name == format!("{}", lang_name));
+        assert!(found.is_some(), "No database language found for variant {lang_name}");
+        assert_eq!(found.unwrap().short_name, lang_name.to_string());
+      }
+    });
+  }
 
   #[test]
   fn test_get_player_from_name() {
@@ -224,4 +247,5 @@ mod tests {
   generate_select_test!(Team, select_team);
   generate_select_test!(Shot, select_shot);
   generate_select_test!(Game, select_game);
+  generate_select_test!(Language, select_lang);
 }

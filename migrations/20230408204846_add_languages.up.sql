@@ -2,5 +2,5 @@
 INSERT INTO supported_languages
   (id, short_name, native_name)
 VALUES
-  (1, 'en', 'English'),
-  (2, 'fr', 'Français');
+  (1, 'en-ca', 'English (Canada)'),
+  (2, 'fr-ca', 'Français (Canada)');

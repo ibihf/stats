@@ -2,33 +2,14 @@ mod db;
 mod filters;
 mod model;
 mod views;
+mod languages;
 
 use crate::model::{Division, Game, GamePlayer, League, Player, Shot, Team, Language};
 
 use serde::{Serialize, Deserialize};
-use derive_more::Display;
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Display)]
-pub enum SupportedLanguage {
-  #[serde(rename="en-ca")]
-  #[display(fmt="en-ca")]
-  English,
-  #[serde(rename="fr-ca")]
-  #[display(fmt="fr-ca")]
-  French,
-}
-/*
-impl std::fmt::Display for SupportedLanguage {
-  fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-    match self {
-      Self::English => write!(fmt, "en-ca"),
-      Self::French => write!(fmt, "fr-ca"),
-    }
-  }
-}
-*/
 
 use views::{GoalDetails, PlayerStats, ShotDetails, TeamStats, IihfStatsI64};
+use languages::SupportedLanguage;
 
 use rust_i18n::t;
 rust_i18n::i18n!("translations");
@@ -148,7 +129,7 @@ pub struct ServerState {
 
 #[tokio::main]
 async fn main() {
-    println!("{}", t!("hello", locale="fr"));
+    println!("{}", t!("game_url", locale="en-ca"));
     println!("{:?}", available_locales());
     let pool = db::connect().await;
     let state = ServerState {
@@ -156,12 +137,13 @@ async fn main() {
     };
     let router = Router::new()
         .route("/", get(language_list))
-        .route("/:lang/", get(league_html))
+        .route(&t!("home_url", locale="en-ca"), get(league_html))
         .route("/:lang/shots/", get(shots_all))
         .route("/:lang/test/", get(test_template))
-        .route("/:lang/league/:id/", get(divisions_for_league_html))
-        .route("/:lang/division/:id/", get(games_for_division_html))
-        .route("/:lang/game/:id/", get(score_for_game_html))
+        .route(&t!("league_url", locale="en-ca"), get(divisions_for_league_html))
+        .route(&t!("division_url", locale="en-ca"), get(games_for_division_html))
+        .route(&t!("game_url", locale="en-ca"), get(score_for_game_html))
+        .route(&t!("game_url", locale="fr-ca"), get(score_for_game_html))
         .route("/:lang/player/:name/", get(player_from_name))
         .with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
