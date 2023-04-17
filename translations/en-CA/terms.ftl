@@ -1,3 +1,4 @@
+view-code = view code
 game-of-division = { $game } of the { $division }
 unassisted = unassisted
 not-applicable = N/A
