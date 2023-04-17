@@ -833,6 +833,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashmap_macro"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8a181d5ff5b742b5a830beb8c172562e6f22dccba6e1308bbacaba9fda84c8d"
+
+[[package]]
 name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -984,6 +990,7 @@ dependencies = [
  "chrono",
  "const_format",
  "derive_more",
+ "hashmap_macro",
  "once_cell",
  "ormx",
  "rust-i18n",

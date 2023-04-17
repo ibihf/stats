@@ -9,7 +9,10 @@ askama::i18n::load!(LOCALES);
 
 use crate::model::{Division, Game, GamePlayer, League, Player, Shot, Team, Language};
 use views::{GoalDetails, PlayerStats, ShotDetails, TeamStats, IihfStatsI64};
-use languages::SupportedLanguage;
+use languages::{
+  SupportedLanguage,
+  LangLink,
+}; 
 
 use askama::Template;
 use axum::{
@@ -39,6 +42,9 @@ struct HelloTemplate<'a> {
 struct LanguageListTemplate<'a> {
   #[locale]
   pub loc: Locale<'a>,
+  pub url_name: &'a str,
+  pub lang_links: Vec<LangLink>,
+  pub lang: SupportedLanguage,
   pub languages: Vec<Language>,
 }
 
@@ -47,8 +53,8 @@ struct LanguageListTemplate<'a> {
 struct BoxScoreTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
-    goals: Vec<GoalDetails>,
     lang: SupportedLanguage,
+    goals: Vec<GoalDetails>,
 }
 
 #[derive(Template)]
@@ -56,8 +62,8 @@ struct BoxScoreTemplate<'a> {
 struct IndividualGamePointsTableTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
-    players: Vec<PlayerStats>,
     lang: SupportedLanguage,
+    players: Vec<PlayerStats>,
 }
 
 #[derive(Template)]
@@ -71,7 +77,11 @@ struct TeamGameStatsTemplate<'a> {
 
 #[derive(Template)]
 #[template(path = "division_list.html")]
-struct DivisionListTemplate {
+struct DivisionListTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
+    url_name: &'a str,
+    lang_links: Vec<LangLink>,
     league: League,
     divisions: Vec<Division>,
     lang: SupportedLanguage,
@@ -82,9 +92,11 @@ struct DivisionListTemplate {
 struct LeagueListTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
+    url_name: &'a str,
+    lang_links: Vec<LangLink>,
+    lang: SupportedLanguage,
     leagues: Vec<League>,
     heading: String,
-    lang: SupportedLanguage,
 }
 
 #[derive(Template)]
@@ -101,6 +113,8 @@ struct IihfTeamStatsTableTemplate<'a> {
 struct GameListTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
+    url_name: &'a str,
+    lang_links: Vec<LangLink>,
     division: Division,
 		iihf_team_stats_table: IihfTeamStatsTableTemplate<'a>,
     games: Vec<Game>,
@@ -121,6 +135,8 @@ struct ShotsTableTemplate<'a> {
 struct GameScorePageTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
+    url_name: &'a str,
+    lang_links: Vec<LangLink>,
     game: Game,
     division: Division,
     box_score: BoxScoreTemplate<'a>,
@@ -132,7 +148,11 @@ struct GameScorePageTemplate<'a> {
 
 #[derive(Template)]
 #[template(path = "player_page.html")]
-pub struct PlayerPageTemplate {
+pub struct PlayerPageTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
+    lang_links: Vec<LangLink>,
+    url_name: &'a str,
     player: Player,
     league: League,
     league_stats: PlayerStats,
@@ -178,6 +198,9 @@ async fn language_list(
     .unwrap();
   let lang_list_tmpl = LanguageListTemplate {
     loc: Locale::new(langid!("en-ca"), &LOCALES),
+    url_name: "root_url_tmpl",
+    lang_links: SupportedLanguage::English.other_langs().map(move |olang| LangLink::from_lang(olang, "root_url_tmpl")).collect(),
+    lang: SupportedLanguage::English,
     languages
   };
   (StatusCode::OK, lang_list_tmpl)
@@ -187,7 +210,7 @@ async fn player_from_name(
     State(server_config): State<ServerState>,
     Path((lang, name)): Path<(SupportedLanguage, String)>,
 ) -> impl IntoResponse {
-    let player = Player::from_name_case_insensitive(&server_config.db_pool, name)
+    let player = Player::from_name_case_insensitive(&server_config.db_pool, name.clone())
         .await
         .unwrap();
     let latest_league = Player::latest_league(&server_config.db_pool, player.id)
@@ -203,7 +226,10 @@ async fn player_from_name(
         .unwrap();
     let html = PlayerPageTemplate {
         player,
+        lang_links: lang.other_langs().map(move |olang| LangLink::from_lang_and_name(olang, &name, "player_url_tmpl")).collect(),
         lang,
+        locale: lang.into(),
+        url_name: "player_url_tmpl",
         league: latest_league,
         league_stats: latest_league_stats,
         lifetime_stats,
@@ -253,6 +279,8 @@ async fn league_html(
     }
     .to_string();
     let leagues_template = LeagueListTemplate {
+        lang_links: lang.other_langs().map(move |olang| LangLink::from_lang(olang, "root_url_tmpl")).collect(),
+        url_name: "root_url_tmpl",
         locale: lang.into(),
         leagues,
         heading,
@@ -272,6 +300,9 @@ async fn divisions_for_league_html(
         .await
         .unwrap();
     let html = DivisionListTemplate {
+        locale: lang.into(),
+        lang_links: lang.other_langs().map(move |olang| LangLink::from_lang_and_id(olang, league_id, "league_url_tmpl")).collect(),
+        url_name: "league_url_tmpl",
         league,
         divisions,
         lang,
@@ -294,6 +325,8 @@ async fn games_for_division_html(
 			.unwrap();
     let games_template = GameListTemplate {
         locale: lang.into(),
+        lang_links: lang.other_langs().map(move |olang| LangLink::from_lang_and_id(olang, division_id, "division_url_tmpl")).collect(),
+        url_name: "division_url_tmpl",
         division,
 				iihf_team_stats_table: IihfTeamStatsTableTemplate {
           locale: lang.into(),
@@ -339,6 +372,8 @@ async fn score_for_game_html(
     let pbp_html = ShotsTableTemplate { locale: lang.into(), shots: pbp, lang };
     let game_template = GameScorePageTemplate {
         locale: lang.into(),
+        lang_links: lang.other_langs().map(move |olang| LangLink::from_lang_and_id(olang, game_id, "game_url_tmpl")).collect(),
+        url_name: "game_url_tmpl",
         division,
         game,
         lang,

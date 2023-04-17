@@ -1,3 +1,7 @@
+root_url = /:lang/
+root_url_tmpl = /{ $lang }/
+player_url = /:lang/player/:name/
+player_url_tmpl = /{ $lang }/player/{ $name }/
 game_url = /:lang/game/:id/
 game_url_tmpl = /{ $lang }/game/{ $id }/
 league_url = /:lang/league/:id/
