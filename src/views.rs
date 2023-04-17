@@ -1,5 +1,5 @@
-use crate::model::{Division, Game, League, Period, Player};
-use serde::{Deserialize, Serialize};
+use crate::model::{Division, Game, League, Player};
+use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
 use sqlx::PgPool;
 
