@@ -1,4 +1,5 @@
 game-of-division = { $game } of the { $division }
+no-games = No games have been recorded.
 play-by-play = play-by-play
 box-score = box score
 individual = individual
@@ -12,6 +13,8 @@ league_ibihf = IBIHF Leagues
 language_selection = Please choose your language
 game = game
 game_plural = games
+shot = shot
+shot_plural = shots
 point = point
 point_plural = points
 goal = goal

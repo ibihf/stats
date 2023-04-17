@@ -10,10 +10,10 @@
 	<h2 id="games">Games</h2>
 	<ol aria-labelledby="games">
 		{% for game in games %}
-			<li><a href="/en/game/{{ game.id }}/">{{ game.name }}</a></li>
+			<li><a href="{{ localize("game_url_tmpl", lang: lang.to_string(), id: game.id) }}">{{ game.name }}</a></li>
 		{% endfor %}
 	</ol>
 	{% else %}
-	<p>No games have been recorded.</p>
+	<p>{{ localize("no-games") }}</p>
 	{% endif %}
 {% endblock %}

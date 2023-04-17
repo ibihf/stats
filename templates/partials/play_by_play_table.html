@@ -17,9 +17,9 @@
         <td>{{ shot.player_number }}</td>
         <td>
           {% if shot.is_goal %}
-            Goal
+            {{ localize("goal") }}
           {% else %}
-            Shot
+            {{ localize("shot") }}
           {% endif %}
         </td>
         <td>{{ shot.period_short_name }}</td>

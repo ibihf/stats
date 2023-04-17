@@ -8,9 +8,6 @@ use askama::i18n::{langid, Locale};
 askama::i18n::load!(LOCALES);
 
 use crate::model::{Division, Game, GamePlayer, League, Player, Shot, Team, Language};
-
-use serde::{Serialize, Deserialize};
-
 use views::{GoalDetails, PlayerStats, ShotDetails, TeamStats, IihfStatsI64};
 use languages::SupportedLanguage;
 
@@ -28,7 +25,7 @@ use sqlx::{Pool, Postgres};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-const VERSION: &str = "0.2.9";
+const VERSION: &str = "0.2.10";
 
 #[derive(Template)]
 #[template(path = "hello.html")]
@@ -102,6 +99,8 @@ struct IihfTeamStatsTableTemplate<'a> {
 #[derive(Template)]
 #[template(path = "game_list.html")]
 struct GameListTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     division: Division,
 		iihf_team_stats_table: IihfTeamStatsTableTemplate<'a>,
     games: Vec<Game>,
@@ -294,6 +293,7 @@ async fn games_for_division_html(
 			.await
 			.unwrap();
     let games_template = GameListTemplate {
+        locale: lang.into(),
         division,
 				iihf_team_stats_table: IihfTeamStatsTableTemplate {
           locale: lang.into(),

@@ -1,4 +1,5 @@
 game-of-division = { $game } de le { $division }
+no-games = Aucun match n’a été enregistré.
 play-by-play = jeu-par-jeu
 box-score = score de la boîte
 individual = individu
@@ -15,6 +16,8 @@ point = point
 point_plural = points
 goal = but
 goal_plural = buts
+shot = tiré
+shot_plural = tirs
 assist = aide
 assist_plural = aides
 name = nom
