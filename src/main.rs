@@ -28,6 +28,8 @@ use sqlx::{Pool, Postgres};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+const VERSION: &str = "0.2.9";
+
 #[derive(Template)]
 #[template(path = "hello.html")]
 struct HelloTemplate<'a> {
