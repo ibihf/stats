@@ -29,17 +29,17 @@
             {% if shot.first_assist_name.is_some() %}
               {{ shot.first_assist_name.as_ref().unwrap() }}
             {% else %}
-              unassisted
+              {{ localize("unassisted") }}
             {% endif %}
           {% else %}
-            N/A
+            {{ localize("not-applicable") }}
           {% endif %}
         </td>
         <td>
           {% if shot.second_assist_name.is_some() %}
             {{ shot.second_assist_name.as_ref().unwrap() }}
           {% else %}
-            N/A
+            {{ localize("not-applicable") }}
           {% endif %}
         </td>
       </tr>

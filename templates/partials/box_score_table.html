@@ -20,14 +20,14 @@
           {% if goal.first_assist_name.is_some() %}
             {{ goal.first_assist_name.as_ref().unwrap() }}
           {% else %}
-            unassisted
+            {{ localize("unassisted") }}
           {% endif %}
         </td>
         <td>
           {% if goal.second_assist_name.is_some() %}
             {{ goal.second_assist_name.as_ref().unwrap() }}
           {% else %}
-            N/A
+            {{ localize("not-applicable") }}
           {% endif %}
         </td>
       </tr>

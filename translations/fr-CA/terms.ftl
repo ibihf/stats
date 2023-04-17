@@ -1,4 +1,6 @@
 game-of-division = { $game } de le { $division }
+unassisted = non assisté
+not-applicable = S/O
 no-games = Aucun match n’a été enregistré.
 play-by-play = jeu-par-jeu
 box-score = score de la boîte

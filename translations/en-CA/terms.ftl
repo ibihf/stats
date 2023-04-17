@@ -1,4 +1,6 @@
 game-of-division = { $game } of the { $division }
+unassisted = unassisted
+not-applicable = N/A
 no-games = No games have been recorded.
 play-by-play = play-by-play
 box-score = box score
