@@ -199,7 +199,7 @@ async fn language_list(
   let lang_list_tmpl = LanguageListTemplate {
     loc: Locale::new(langid!("en-ca"), &LOCALES),
     url_name: "root_url_tmpl",
-    lang_links: SupportedLanguage::English.other_langs().map(move |olang| LangLink::from_lang(olang, "root_url_tmpl")).collect(),
+    lang_links: Vec::new(),
     lang: SupportedLanguage::English,
     languages
   };
