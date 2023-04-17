@@ -3,7 +3,7 @@
 {% block title %}Select Your Language{% endblock %}
 
 {% block content %}
-  <h1>Select Your Language</h1>
+  <h1>{{ localize("language_selection") }}</h1>
   {% if languages.len() > 0 %}
     <ul>
     {% for lang in languages %}

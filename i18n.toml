@@ -1,1 +1,12 @@
-fallback_language = "en-ca"
+# Defaults to "en":
+fallback_language = "en-CA"
+
+[fluent]
+# Defaults to true:
+use_isolating = false
+
+# Defaults to "i18n":
+assets_dir = "translations"
+
+# Default to None:
+# core_locales = "…"

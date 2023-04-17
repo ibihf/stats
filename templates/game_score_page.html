@@ -3,13 +3,13 @@
 {% block title %}{{ game.name }}{% endblock %}
 
 {% block content %}
-<h1>{{ game.name }} of the {{ division.name }}</h1>
-<h2>Team</h2>
+<h1>{{ localize("game-of-division", game: game.name.clone(), division: division.name.clone()) }}</h1>
+<h2>{{ localize("team") }}</h2>
 {{ team_stats|safe }}
-<h2>Individual</h2>
+<h2>{{ localize("individual") }}</h2>
 {{ individual_stats|safe }}
-<h2>Box Score</h2>
+<h2>{{ localize("box-score") }}</h2>
 {{ box_score|safe }}
-<h2>Play-by-Play</h2>
+<h2>{{ localize("play-by-play") }}</h2>
 {{ play_by_play|safe }}
 {% endblock %}

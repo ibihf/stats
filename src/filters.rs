@@ -6,7 +6,3 @@ pub fn seconds_as_time(secs: &i32) -> ::askama::Result<String> {
   let seconds = secs % 60;
   Ok(format!("{}:{}", minutes, seconds))
 }
-
-pub fn intl(key: &str, lang: &SupportedLanguage) -> ::askama::Result<String> {
-  Ok(t!(key, locale=&format!("{}", lang)))
-}

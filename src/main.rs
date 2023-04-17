@@ -4,15 +4,15 @@ mod model;
 mod views;
 mod languages;
 
+use askama::i18n::{langid, Locale};
+askama::i18n::load!(LOCALES);
+
 use crate::model::{Division, Game, GamePlayer, League, Player, Shot, Team, Language};
 
 use serde::{Serialize, Deserialize};
 
 use views::{GoalDetails, PlayerStats, ShotDetails, TeamStats, IihfStatsI64};
 use languages::SupportedLanguage;
-
-use rust_i18n::t;
-rust_i18n::i18n!("translations");
 
 use askama::Template;
 use axum::{
@@ -28,12 +28,6 @@ use sqlx::{Pool, Postgres};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-macro_rules! intl {
-  ($key:expr) => {
-    t!($key, locale=path.as_ref())
-  }
-}
-
 #[derive(Template)]
 #[template(path = "hello.html")]
 struct HelloTemplate<'a> {
@@ -43,27 +37,35 @@ struct HelloTemplate<'a> {
 
 #[derive(Template)]
 #[template(path = "language_list.html")]
-struct LanguageListTemplate {
+struct LanguageListTemplate<'a> {
+  #[locale]
+  pub loc: Locale<'a>,
   pub languages: Vec<Language>,
 }
 
 #[derive(Template)]
 #[template(path = "partials/box_score_table.html")]
-struct BoxScoreTemplate {
+struct BoxScoreTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     goals: Vec<GoalDetails>,
     lang: SupportedLanguage,
 }
 
 #[derive(Template)]
 #[template(path = "partials/individual_game_points_table.html")]
-struct IndividualGamePointsTableTemplate {
+struct IndividualGamePointsTableTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     players: Vec<PlayerStats>,
     lang: SupportedLanguage,
 }
 
 #[derive(Template)]
 #[template(path = "partials/team_stats_table.html")]
-struct TeamGameStatsTemplate {
+struct TeamGameStatsTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     teams: Vec<TeamStats>,
     lang: SupportedLanguage,
 }
@@ -78,7 +80,9 @@ struct DivisionListTemplate {
 
 #[derive(Template)]
 #[template(path = "league_list.html")]
-struct LeagueListTemplate {
+struct LeagueListTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     leagues: Vec<League>,
     heading: String,
     lang: SupportedLanguage,
@@ -86,36 +90,42 @@ struct LeagueListTemplate {
 
 #[derive(Template)]
 #[template(path="partials/iihf_team_stats_table.html")]
-struct IihfTeamStatsTableTemplate {
+struct IihfTeamStatsTableTemplate<'a> {
+  #[locale]
+  locale: Locale<'a>,
   lang: SupportedLanguage,
 	iihf_stats: Vec<IihfStatsI64>,
 }
 
 #[derive(Template)]
 #[template(path = "game_list.html")]
-struct GameListTemplate {
+struct GameListTemplate<'a> {
     division: Division,
-		iihf_team_stats_table: IihfTeamStatsTableTemplate,
+		iihf_team_stats_table: IihfTeamStatsTableTemplate<'a>,
     games: Vec<Game>,
     lang: SupportedLanguage,
 }
 
 #[derive(Template)]
 #[template(path = "partials/play_by_play_table.html")]
-struct ShotsTableTemplate {
+struct ShotsTableTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     shots: Vec<ShotDetails>,
     lang: SupportedLanguage,
 }
 
 #[derive(Template)]
 #[template(path = "game_score_page.html")]
-struct GameScorePageTemplate {
+struct GameScorePageTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
     game: Game,
     division: Division,
-    box_score: BoxScoreTemplate,
-    team_stats: TeamGameStatsTemplate,
-    individual_stats: IndividualGamePointsTableTemplate,
-    play_by_play: ShotsTableTemplate,
+    box_score: BoxScoreTemplate<'a>,
+    team_stats: TeamGameStatsTemplate<'a>,
+    individual_stats: IndividualGamePointsTableTemplate<'a>,
+    play_by_play: ShotsTableTemplate<'a>,
     lang: SupportedLanguage,
 }
 
@@ -136,21 +146,19 @@ pub struct ServerState {
 
 #[tokio::main]
 async fn main() {
-    println!("{}", t!("game_url", locale="en-ca"));
-    println!("{:?}", available_locales());
     let pool = db::connect().await;
     let state = ServerState {
         db_pool: Arc::new(pool),
     };
     let router = Router::new()
         .route("/", get(language_list))
-        .route(&t!("home_url", locale="en-ca"), get(league_html))
+        .route("/:lang/", get(league_html))
         .route("/:lang/shots/", get(shots_all))
         .route("/:lang/test/", get(test_template))
-        .route(&t!("league_url", locale="en-ca"), get(divisions_for_league_html))
-        .route(&t!("division_url", locale="en-ca"), get(games_for_division_html))
-        .route(&t!("game_url", locale="en-ca"), get(score_for_game_html))
-        .route(&t!("game_url", locale="fr-ca"), get(score_for_game_html))
+        .route(&SupportedLanguage::English.lookup("league_url"), get(divisions_for_league_html))
+        .route(&SupportedLanguage::English.lookup("division_url"), get(games_for_division_html))
+        .route(&SupportedLanguage::English.lookup("game_url"), get(score_for_game_html))
+        .route(&SupportedLanguage::French.lookup("game_url"), get(score_for_game_html))
         .route("/:lang/player/:name/", get(player_from_name))
         .with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
@@ -168,6 +176,7 @@ async fn language_list(
     .await
     .unwrap();
   let lang_list_tmpl = LanguageListTemplate {
+    loc: Locale::new(langid!("en-ca"), &LOCALES),
     languages
   };
   (StatusCode::OK, lang_list_tmpl)
@@ -243,6 +252,7 @@ async fn league_html(
     }
     .to_string();
     let leagues_template = LeagueListTemplate {
+        locale: lang.into(),
         leagues,
         heading,
         lang,
@@ -284,6 +294,7 @@ async fn games_for_division_html(
     let games_template = GameListTemplate {
         division,
 				iihf_team_stats_table: IihfTeamStatsTableTemplate {
+          locale: lang.into(),
 					iihf_stats,
           lang,
 				},
@@ -308,21 +319,24 @@ async fn score_for_game_html(
         .await
         .unwrap();
     let score = game.score(&server_config.db_pool).await.unwrap();
-    let score_html = TeamGameStatsTemplate { teams: score, lang };
+    let score_html = TeamGameStatsTemplate { locale: lang.into(), teams: score, lang };
     let goal_details = game.box_score(&server_config.db_pool)
         .await
         .unwrap();
     let goal_details_html = IndividualGamePointsTableTemplate {
+        locale: lang.into(),
         players: goal_details,
         lang,
     };
     let box_score = game.goals(&server_config.db_pool).await.unwrap();
     let box_score_html = BoxScoreTemplate {
+        locale: lang.into(),
         goals: box_score,
         lang,
     };
-    let pbp_html = ShotsTableTemplate { shots: pbp, lang };
+    let pbp_html = ShotsTableTemplate { locale: lang.into(), shots: pbp, lang };
     let game_template = GameScorePageTemplate {
+        locale: lang.into(),
         division,
         game,
         lang,
