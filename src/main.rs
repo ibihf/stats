@@ -28,6 +28,12 @@ use sqlx::{Pool, Postgres};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+macro_rules! intl {
+  ($key:expr) => {
+    t!($key, locale=path.as_ref())
+  }
+}
+
 #[derive(Template)]
 #[template(path = "hello.html")]
 struct HelloTemplate<'a> {
@@ -81,6 +87,7 @@ struct LeagueListTemplate {
 #[derive(Template)]
 #[template(path="partials/iihf_team_stats_table.html")]
 struct IihfTeamStatsTableTemplate {
+  lang: SupportedLanguage,
 	iihf_stats: Vec<IihfStatsI64>,
 }
 
@@ -278,6 +285,7 @@ async fn games_for_division_html(
         division,
 				iihf_team_stats_table: IihfTeamStatsTableTemplate {
 					iihf_stats,
+          lang,
 				},
         games,
         lang,
