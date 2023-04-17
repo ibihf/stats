@@ -1,3 +1,11 @@
 game_url: /:lang/match/:id/
-test: Test
-welcome: Beinvenue
+game: match
+game_plural: matches
+point: point
+point_plural: points
+goal: but
+goal_plural: buts
+assist: aide
+assist_plural: aides
+name: nom
+team: équipe

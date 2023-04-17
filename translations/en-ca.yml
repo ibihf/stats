@@ -7,3 +7,11 @@ welcome: Welcome!
 test2: 123123
 message: Can we %{go} to the store?
 hello: Hello World
+point: point
+point_plural: points
+goal: goal
+goal_plural: goals
+assist: assist
+assist_plural: assists
+name: name
+team: team
