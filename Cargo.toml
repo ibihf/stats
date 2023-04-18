@@ -28,6 +28,11 @@ derive_more = "0.99.17"
 const_format = "0.2.30"
 strum_macros = "0.24.3"
 hashmap_macro = "0.1.0"
+i18n-embed = { version = "0.13.8", features = ["fluent-system"] }
+i18n-embed-fl = "0.6.6"
+rust-embed = { version = "6.6.1", features = ["axum"] }
+lazy_static = "1.4.0"
+ibihf-macros = { version = "0.1.0", path = "ibihf-macros" }
 
 [dev-dependencies]
 tokio-test = "0.4.2"
