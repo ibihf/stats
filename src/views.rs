@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::model::{Division, Game, League, Player};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use sqlx::PgPool;
 
@@ -35,18 +35,18 @@ pub struct IihfStatsI64 {
     pub points: i64,
 }
 impl Into<IihfStatsI64> for IihfStats {
-  fn into(self) -> IihfStatsI64 {
-    IihfStatsI64 {
-      team_name: self.team_name.clone(),
-      team_id: self.team_id,
-      reg_wins: self.reg_wins.into(),
-      reg_losses: self.reg_losses.into(),
-      ot_wins: self.ot_wins.into(),
-      ot_losses: self.ot_losses.into(),
-      ties: self.ties.into(),
-      points: self.points.into(),
+    fn into(self) -> IihfStatsI64 {
+        IihfStatsI64 {
+            team_name: self.team_name.clone(),
+            team_id: self.team_id,
+            reg_wins: self.reg_wins.into(),
+            reg_losses: self.reg_losses.into(),
+            ot_wins: self.ot_wins.into(),
+            ot_losses: self.ot_losses.into(),
+            ties: self.ties.into(),
+            points: self.points.into(),
+        }
     }
-  }
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug)]
@@ -257,29 +257,32 @@ ORDER BY
 }
 
 impl Game {
-	pub async fn score(&self, pool: &PgPool) -> Result<Vec<TeamStats>, sqlx::Error> {
-		game_score(pool, self.id).await
-	}
-	pub async fn box_score(&self, pool: &PgPool) -> Result<Vec<PlayerStats>, sqlx::Error> {
-		game_box_score(pool, self.id).await
-	}
-	pub async fn iihf_points(&self, pool: &PgPool) -> Result<Vec<IihfPoints>, sqlx::Error> {
-		game_iihf_points(pool, self.id).await
-	}
-	pub async fn iihf_stats(&self, pool: &PgPool) -> Result<Vec<IihfStats>, sqlx::Error> {
-		game_iihf_stats(pool, self.id).await
-	}
-	pub async fn goals(&self, pool: &PgPool) -> Result<Vec<GoalDetails>, sqlx::Error> {
-		game_goals(pool, self.id).await
-	}
-	pub async fn play_by_play(&self, pool: &PgPool) -> Result<Vec<ShotDetails>, sqlx::Error> {
-		game_play_by_play(pool, self.id).await
-	}
+    pub async fn score(&self, pool: &PgPool) -> Result<Vec<TeamStats>, sqlx::Error> {
+        game_score(pool, self.id).await
+    }
+    pub async fn box_score(&self, pool: &PgPool) -> Result<Vec<PlayerStats>, sqlx::Error> {
+        game_box_score(pool, self.id).await
+    }
+    pub async fn iihf_points(&self, pool: &PgPool) -> Result<Vec<IihfPoints>, sqlx::Error> {
+        game_iihf_points(pool, self.id).await
+    }
+    pub async fn iihf_stats(&self, pool: &PgPool) -> Result<Vec<IihfStats>, sqlx::Error> {
+        game_iihf_stats(pool, self.id).await
+    }
+    pub async fn goals(&self, pool: &PgPool) -> Result<Vec<GoalDetails>, sqlx::Error> {
+        game_goals(pool, self.id).await
+    }
+    pub async fn play_by_play(&self, pool: &PgPool) -> Result<Vec<ShotDetails>, sqlx::Error> {
+        game_play_by_play(pool, self.id).await
+    }
 }
 
-pub async fn division_iihf_stats(pool: &PgPool, division_id: i32) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
-	sqlx::query_as::<_, IihfStatsI64>(
-		r#"
+pub async fn division_iihf_stats(
+    pool: &PgPool,
+    division_id: i32,
+) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
+    sqlx::query_as::<_, IihfStatsI64>(
+        r#"
 SELECT
 	SUM(reg_win(games.id, teams.id)) AS reg_wins,
 	SUM(reg_loss(games.id, teams.id)) AS reg_losses,
@@ -297,17 +300,17 @@ GROUP BY
 	teams.id
 ORDER BY
 	points DESC;
-		"#
-	)
-	.bind(division_id)
-	.fetch_all(pool)
-	.await
+		"#,
+    )
+    .bind(division_id)
+    .fetch_all(pool)
+    .await
 }
 
 impl Division {
-	pub async fn iihf_stats(&self, pool: &PgPool) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
-		division_iihf_stats(pool, self.id).await
-	}
+    pub async fn iihf_stats(&self, pool: &PgPool) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
+        division_iihf_stats(pool, self.id).await
+    }
 }
 
 impl Player {
@@ -504,7 +507,10 @@ pub struct ShotDetails {
 #[cfg(test)]
 mod tests {
     use crate::model::{Game, League, Player};
-    use crate::views::{game_play_by_play, get_player_stats_overview, Notification, game_score, game_goals, game_iihf_stats, game_iihf_points, game_box_score, division_iihf_stats};
+    use crate::views::{
+        division_iihf_stats, game_box_score, game_goals, game_iihf_points, game_iihf_stats,
+        game_play_by_play, game_score, get_player_stats_overview, Notification,
+    };
     use ormx::Table;
     use std::env;
 
