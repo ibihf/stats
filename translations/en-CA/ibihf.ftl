@@ -1,3 +1,13 @@
+root_url = /:lang/
+root_url_tmpl = /{ $lang }/
+player_url = /:lang/player/:name/
+player_url_tmpl = /{ $lang }/player/{ $name }/
+game_url = /:lang/game/:id/
+game_url_tmpl = /{ $lang }/game/{ $id }/
+league_url = /:lang/league/:id/
+league_url_tmpl = /{ $lang }/league/{ $id }/
+division_url = /:lang/division/:id/
+division_url_tmpl = /{ $lang }/division/{ $id }/
 view-code = view code
 game-of-division = { $game } of the { $division }
 unassisted = unassisted

@@ -1,3 +1,5 @@
+game_url = /:lang/match/:id/
+game_url_tmpl = /{ $lang }/match/{ $id }/
 view-code = voir le code
 game-of-division = { $game } de le { $division }
 unassisted = non assisté
