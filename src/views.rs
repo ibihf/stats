@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::model::{Division, Game, League, Player};
 use serde::{Serialize, Deserialize};
 use sqlx::FromRow;
@@ -32,6 +34,21 @@ pub struct IihfStatsI64 {
     pub ties: i64,
     pub points: i64,
 }
+impl Into<IihfStatsI64> for IihfStats {
+  fn into(self) -> IihfStatsI64 {
+    IihfStatsI64 {
+      team_name: self.team_name.clone(),
+      team_id: self.team_id,
+      reg_wins: self.reg_wins.into(),
+      reg_losses: self.reg_losses.into(),
+      ot_wins: self.ot_wins.into(),
+      ot_losses: self.ot_losses.into(),
+      ties: self.ties.into(),
+      points: self.points.into(),
+    }
+  }
+}
+
 #[derive(FromRow, Deserialize, Serialize, Debug)]
 pub struct IihfPoints {
     pub team_name: String,

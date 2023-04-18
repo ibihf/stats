@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use askama::i18n::FluentValue;
 use crate::LOCALES;
 use askama::i18n::{langid, LanguageIdentifier, Locale};
 use askama::i18n::fluent_templates::Loader;
@@ -26,6 +26,11 @@ pub enum SupportedLanguage {
   #[serde(rename="fr-ca")]
   #[display(fmt="fr-ca")]
   French,
+}
+impl From<SupportedLanguage> for FluentValue<'_> {
+  fn from(n: SupportedLanguage) -> Self {
+    n.to_string().into()
+  }
 }
 impl Into<LanguageIdentifier> for SupportedLanguage {
   fn into(self) -> LanguageIdentifier {
@@ -60,50 +65,4 @@ impl SupportedLanguage {
 pub struct LangLink {
   pub href: String,
   pub name: String,
-}
-
-macro_rules! lang_url_match {
-  ($lang:expr, $link_name:expr) => {
-      Into::<Locale>::into($lang)
-      .translate(
-        $link_name,
-        hashmap_macro::hashmap! {
-          "lang" => $lang.to_string().into()
-        },
-      )
-      .expect("Unable to find key {key} in locale {self}.")
-  };
-  ($lang:expr, $link_name:expr, $id:expr) => {
-      Into::<Locale>::into($lang)
-      .translate(
-        $link_name,
-        hashmap_macro::hashmap! {
-          "lang" => $lang.to_string().into(),
-          "id" => $id.into()
-        },
-      )
-      .expect("Unable to find key {key} in locale {self}.")
-  };
-}
-
-// TODO: Genericize this so it can accept any arugments through a impl Iterator<(K, V>) or something similar.
-impl LangLink {
-  pub fn from_lang(lang: SupportedLanguage, link_name: &str) -> Self {
-    Self {
-      name: lang.native_name(),
-      href: lang_url_match!(lang, link_name),
-    }
-  }
-  pub fn from_lang_and_id(lang: SupportedLanguage, id: i32, link_name: &str) -> Self {
-    Self {
-      name: lang.native_name(),
-      href: lang_url_match!(lang, link_name, id),
-    }
-  }
-  pub fn from_lang_and_name(lang: SupportedLanguage, name: &str, link_name: &str) -> Self {
-    Self {
-      name: lang.native_name(),
-      href: lang_url_match!(lang, link_name, name),
-    }
-  }
 }
