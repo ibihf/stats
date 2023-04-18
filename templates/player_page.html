@@ -1,4 +1,6 @@
-<body>
+{% extends "master.html" %}
+
+{% block content %}
 <h1>{{ player.name }}</h1>
 <h2>Latest Competition: {{ league.name }}</h2>
 <label for="league_points">Points</label>
@@ -14,4 +16,4 @@
 <span id="lfietime_goals">{{ lifetime_stats.goals }}</span>
 <label for="lfietime_goals">Assists</label>
 <span id="lfietime_goals">{{ lifetime_stats.goals }}</span>
-</body>
+{% endblock %}
