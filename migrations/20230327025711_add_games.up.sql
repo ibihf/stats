@@ -1,9 +1,8 @@
 INSERT INTO games
-  (id, name, division, team_home, team_away, start_at, end_at)
+  (id, division, team_home, team_away, start_at, end_at)
 VALUES
   (
     1,
-    'Game 1',
     1, -- LV/D
     1, -- Bullseye
     2, -- Seecats
@@ -12,7 +11,6 @@ VALUES
   ),
   (
     2,
-    'Game 2',
     1, -- LV/D
     1, -- Bullseye
     2, -- Seecats
@@ -21,7 +19,6 @@ VALUES
   ),
   (
     3,
-    'Game 3',
     1, -- LV/D
     1, -- Bullseye
     2, -- Seecats
@@ -30,10 +27,17 @@ VALUES
   ),
   (
     4,
-    'Game 4',
     1, -- LV/D
     1, -- Bullseye
     2, -- Seecats
     '2022-03-27 10:00:00 America/Toronto',
     '2022-03-27 11:30:00 America/Toronto'
   );
+
+INSERT INTO game_names
+  (id, game, name, language)
+VALUES
+  (1, 1, 'Game 1', 1),
+  (2, 2, 'Game 2', 1),
+  (3, 3, 'Game 3', 1),
+  (4, 4, 'Game 4', 1);

@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS divisions (
   id SERIAL PRIMARY KEY NOT NULL,
   league INTEGER NOT NULL,
-  name VARCHAR(255) NOT NULL,
   CONSTRAINT league_fk
     FOREIGN KEY(league)
       REFERENCES leagues(id)

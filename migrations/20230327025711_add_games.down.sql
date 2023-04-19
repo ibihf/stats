@@ -1,2 +1,4 @@
+DELETE FROM game_names
+  WHERE id BETWEEN 1 AND 4;
 DELETE FROM games
   WHERE id BETWEEN 1 AND 4;
