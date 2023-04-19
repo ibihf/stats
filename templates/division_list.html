@@ -3,10 +3,10 @@
 {% block title %}Divisions{% endblock %}
 
 {% block content %}
-<h1 id="first-heading">Divisions for the {{ league.name }}</h1>
+<h1 id="first-heading">Divisions for the {{ league.name.clone().unwrap_or("???".to_string()) }}</h1>
 <ul aria-labelledby="first-heading">
   {% for division in divisions %}
-    <li><a href="/{{ lang }}/division/{{ division.id }}/">{{ division.name }}</a></li>
+    <li><a href="/{{ lang }}/division/{{ division.id }}/">{{ division.name.clone().unwrap_or("???".to_string()) }}</a></li>
   {% endfor %}
 </ul>
 {% endblock %}

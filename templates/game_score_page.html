@@ -1,9 +1,9 @@
 {% extends "master.html" %}
 
-{% block title %}{{ game.name }}{% endblock %}
+{% block title %}{{ game.name.clone().unwrap() }}{% endblock %}
 
 {% block content %}
-<h1>{{ localize("game-of-division", game: game.name.clone(), division: division.name.clone()) }}</h1>
+<h1>{{ localize("game-of-division", game: game.name.clone().unwrap(), division: division.name.clone().unwrap()) }}</h1>
 <h2>{{ localize("team") }}</h2>
 {{ team_stats|safe }}
 <h2>{{ localize("individual") }}</h2>

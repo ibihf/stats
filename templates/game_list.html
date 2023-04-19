@@ -1,16 +1,16 @@
 {% extends "master.html" %}
 
-{% block title %}Games for {{ division.name }}{% endblock %}
+{% block title %}Games for {{ division.name.clone().unwrap_or("???".to_string()) }}{% endblock %}
 
 {% block content %}
-	<h1>Division: {{ division.name }}</h1>
+	<h1>Division: {{ division.name|nullable }}</h1>
 	{% if games.len() > 0 %}
 	<h2 id="iihf_points">Points</h2>
 	{{ iihf_team_stats_table|safe }}
 	<h2 id="games">Games</h2>
 	<ol aria-labelledby="games">
 		{% for game in games %}
-			<li><a href="{{ localize("game_url_tmpl", lang: lang, id: game.id) }}">{{ game.name }}</a></li>
+			<li><a href="{{ localize("game_url_tmpl", lang: lang, id: game.id) }}">{{ game.name|nullable }}</a></li>
 		{% endfor %}
 	</ol>
 	{% else %}
