@@ -21,7 +21,7 @@ macro_rules! other_lang_urls {
       }
     }).collect()
   };
-  ($lang:expr, $template:ident, $($k:literal => $v:expr),+) => {
+  ($lang:expr, $template:ident, $($k:literal => $v:expr),*) => {
     $lang.other_langs().map(move |olang| {
       LangLink {
         name: olang.native_name(),
@@ -30,13 +30,45 @@ macro_rules! other_lang_urls {
           $template::URL_KEY_TEMPLATE,
           hashmap_macro::hashmap![
             "lang" => olang.to_string().into(),
-            $($k => $v.into()),+
+            $($k => $v.into()),*
           ],
         )
         .expect("Unable to find key {key} in locale {self}.")
       }
     }).collect()
   };
+}
+macro_rules! impl_url_gen {
+  ($struct:ident, $($name:ident: $ty:ty),*) => {
+    impl $struct<'_> {
+      #[allow(dead_code)]
+      fn lang_link(lang: SupportedLanguage, $($name: $ty),*) -> LangLink {
+        LangLink {
+          name: lang.native_name(),
+          href: Into::<Locale>::into(lang)
+          .translate(
+            Self::URL_KEY_TEMPLATE,
+            hashmap_macro::hashmap![
+              "lang" => lang.into(),
+              $(stringify!($name) => $name.into()),*
+            ],
+          )
+          .expect("Unable to find key {key} in locale {self}.")
+        }
+      }
+    }
+    #[cfg(test)]
+    #[rename_item::rename(case="snake")]
+    #[rename::rename_mod(prepend="test_")]
+    mod $struct {
+      use crate::SupportedLanguage;
+      use crate::$struct;
+      #[test]
+      fn test_lang_link_types() {
+        println!("{:?}", $struct::lang_link(SupportedLanguage::English, 0));
+      }
+    }
+  }
 }
 
 use static_assertions::assert_impl_all;
@@ -110,6 +142,7 @@ struct DivisionListTemplate<'a> {
     divisions: Vec<Division>,
     lang: SupportedLanguage,
 }
+impl_url_gen!(DivisionListTemplate, id: i32);
 assert_impl_all!(DivisionListTemplate: TemplateUrl);
 
 #[derive(Template, TemplateUrl)]
@@ -122,6 +155,7 @@ struct LeagueListTemplate<'a> {
     lang: SupportedLanguage,
     leagues: Vec<League>,
 }
+impl_url_gen!(LeagueListTemplate, id: i32);
 assert_impl_all!(LeagueListTemplate: TemplateUrl);
 
 #[derive(Template)]
@@ -144,6 +178,7 @@ struct GameListTemplate<'a> {
     games: Vec<Game>,
     lang: SupportedLanguage,
 }
+impl_url_gen!(GameListTemplate, id: i32);
 assert_impl_all!(GameListTemplate: TemplateUrl);
 
 #[derive(Template)]
@@ -169,6 +204,7 @@ struct GameScorePageTemplate<'a> {
     play_by_play: ShotsTableTemplate<'a>,
     lang: SupportedLanguage,
 }
+impl_url_gen!(GameScorePageTemplate, id: i32);
 assert_impl_all!(GameScorePageTemplate: TemplateUrl);
 
 #[derive(Template, TemplateUrl)]
@@ -208,15 +244,15 @@ async fn main() {
             &SupportedLanguage::English.lookup(GameListTemplate::URL_KEY),
             get(games_for_division_html),
         )
-        .route(
-            &SupportedLanguage::English.lookup(GameScorePageTemplate::URL_KEY),
-            get(score_for_game_html),
-        )
-        .route(
-            &SupportedLanguage::French.lookup(GameScorePageTemplate::URL_KEY),
-            get(score_for_game_html),
-        )
-        .route("/:lang/player/:name/", get(player_from_name))
+        //.route(
+        //    &SupportedLanguage::English.lookup(GameScorePageTemplate::URL_KEY),
+        //    get(score_for_game_html),
+        //)
+        //.route(
+        //    &SupportedLanguage::French.lookup(GameScorePageTemplate::URL_KEY),
+        //    get(score_for_game_html),
+        //)
+        //.route("/:lang/player/:name/", get(player_from_name))
         .with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
     println!("Listening on {}", addr);
@@ -297,7 +333,7 @@ async fn league_html(
     State(server_config): State<ServerState>,
     Path(lang): Path<SupportedLanguage>,
 ) -> impl IntoResponse {
-    let leagues = League::all(&*server_config.db_pool).await.unwrap();
+    let leagues = League::all(&*server_config.db_pool, lang).await.unwrap();
     let leagues_template = LeagueListTemplate {
         lang_links: other_lang_urls!(lang, LeagueListTemplate),
         locale: lang.into(),
@@ -311,10 +347,11 @@ async fn divisions_for_league_html(
     State(server_config): State<ServerState>,
     Path((lang, league_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let league = League::get(&*server_config.db_pool, league_id)
+    let league = League::get(&*server_config.db_pool, league_id, lang.into())
         .await
+        .unwrap()
         .unwrap();
-    let divisions = Division::by_league(&*server_config.db_pool, league_id)
+    let divisions = Division::by_league(&*server_config.db_pool, league_id, lang)
         .await
         .unwrap();
     let html = DivisionListTemplate {
@@ -332,13 +369,14 @@ async fn games_for_division_html(
     State(server_config): State<ServerState>,
     Path((lang, division_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let division = Division::get(&*server_config.db_pool, division_id)
+    let division = Division::get(&*server_config.db_pool, division_id, lang)
+        .await
+        .unwrap()
+        .unwrap();
+    let games = Game::by_division(&*server_config.db_pool, division.id, lang)
         .await
         .unwrap();
-    let games = Game::by_division(&*server_config.db_pool, division.id)
-        .await
-        .unwrap();
-    let iihf_stats = division.iihf_stats(&*server_config.db_pool).await.unwrap();
+    let iihf_stats = division.iihf_stats(&*server_config.db_pool, lang).await.unwrap();
     let games_template = GameListTemplate {
         locale: lang.into(),
         lang_links: other_lang_urls!(lang, GameListTemplate, "id" => division_id),
@@ -352,6 +390,7 @@ async fn games_for_division_html(
     };
     (StatusCode::OK, games_template)
 }
+/*
 async fn score_for_game_html(
     State(server_config): State<ServerState>,
     Path((lang, game_id)): Path<(SupportedLanguage, i32)>,
@@ -361,8 +400,9 @@ async fn score_for_game_html(
         .fetch_one(&*server_config.db_pool)
         .await
         .unwrap();
-    let division = Division::get(&*server_config.db_pool, game.division)
+    let division = Division::get(&*server_config.db_pool, game.division, lang)
         .await
+        .unwrap()
         .unwrap();
     let pbp = game.play_by_play(&server_config.db_pool).await.unwrap();
     let score = game.score(&server_config.db_pool).await.unwrap();
@@ -397,6 +437,7 @@ async fn score_for_game_html(
     };
     (StatusCode::OK, game_template)
 }
+*/
 
 /*
 macro_rules! insert {

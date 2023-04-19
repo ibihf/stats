@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use crate::model::{Division, Game, League, Player};
+use crate::languages::SupportedLanguage;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use sqlx::PgPool;
@@ -280,9 +281,32 @@ impl Game {
 pub async fn division_iihf_stats(
     pool: &PgPool,
     division_id: i32,
+    lang: SupportedLanguage,
 ) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
     sqlx::query_as::<_, IihfStatsI64>(
         r#"
+WITH team_name AS (
+  SELECT
+    teams.id AS team_id,
+    -- max will get the first matching string; technically it will always get the string that that has the maximum value based on the locale, ignoring nulls.
+    COALESCE(
+      MAX(localized_name.name),
+      MAX(default_name.name),
+      MAX(any_name.name)
+    ) AS team_name,
+    -- this is to get the language id of the team name; although not strictly necessary, since we use MIN(...), then ORDER BY it later on, we prioritize languages that have been added earlier, making this table deterministic
+    COALESCE(
+      MIN(localized_name.language),
+      MIN(default_name.language),
+      MIN(any_name.language)
+    ) AS name_language
+  FROM teams
+  LEFT JOIN team_names localized_name ON localized_name.team = teams.id AND localized_name.language = $2
+  LEFT JOIN team_names default_name ON default_name.team = teams.id AND default_name.language = 1
+  LEFT JOIN team_names any_name ON any_name.team = teams.id
+  GROUP BY teams.id
+  ORDER BY name_language
+)
 SELECT
 	SUM(reg_win(games.id, teams.id)) AS reg_wins,
 	SUM(reg_loss(games.id, teams.id)) AS reg_losses,
@@ -291,25 +315,62 @@ SELECT
 	SUM(tie(games.id, teams.id)) AS ties,
 	SUM(iihf_points(games.id, teams.id)) AS points,
 	teams.id AS team_id,
-	teams.name AS team_name
+  team_name.team_name
 FROM
 	games
 JOIN teams ON teams.id=games.team_home OR teams.id=games.team_away
+JOIN team_name ON team_name.team_id=teams.id
 WHERE games.division=$1
 GROUP BY
-	teams.id
+	teams.id,
+  team_name.team_name
 ORDER BY
 	points DESC;
+
+--SELECT DISTINCT ON (teams.id)
+--	SUM(reg_win(games.id, teams.id)) AS reg_wins,
+--	SUM(reg_loss(games.id, teams.id)) AS reg_losses,
+--	SUM(ot_win(games.id, teams.id)) AS ot_wins,
+--	SUM(ot_loss(games.id, teams.id)) AS ot_losses,
+--	SUM(tie(games.id, teams.id)) AS ties,
+--	SUM(iihf_points(games.id, teams.id)) AS points,
+--	teams.id AS team_id,
+--	COALESCE(
+--    localized_name.name,
+--    default_name.name,
+--    any_name.name
+--  ) AS team_name
+--FROM
+--	games
+--JOIN teams ON teams.id=games.team_home OR teams.id=games.team_away
+--LEFT JOIN team_names localized_name
+--       ON localized_name.team = teams.id
+--      AND localized_name.language = $2
+--LEFT JOIN team_names default_name
+--       ON default_name.team = teams.id
+--      AND default_name.language = 1
+--LEFT JOIN team_names any_name
+--       ON any_name.team = teams.id
+--WHERE games.division=$1
+--GROUP BY
+--	teams.id,
+--  localized_name.name,
+--  default_name.name,
+--  any_name.name
+--ORDER BY
+--  teams.id,
+--	points DESC;
 		"#,
     )
     .bind(division_id)
+    .bind(lang)
     .fetch_all(pool)
     .await
 }
 
 impl Division {
-    pub async fn iihf_stats(&self, pool: &PgPool) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
-        division_iihf_stats(pool, self.id).await
+    pub async fn iihf_stats(&self, pool: &PgPool, lang: SupportedLanguage) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
+        division_iihf_stats(pool, self.id, lang).await
     }
 }
 
@@ -506,6 +567,7 @@ pub struct ShotDetails {
 
 #[cfg(test)]
 mod tests {
+    use crate::languages::SupportedLanguage;
     use crate::model::{Game, League, Player};
     use crate::views::{
         division_iihf_stats, game_box_score, game_goals, game_iihf_points, game_iihf_stats,
@@ -535,7 +597,7 @@ mod tests {
     fn check_league_player_stats() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let league = League::get(&pool, 1).await.unwrap();
+            let league = League::get(&pool, 1, SupportedLanguage::English).await.unwrap().unwrap();
             let player = Player::get(&pool, 2).await.unwrap();
             let stats = League::player_stats(&pool, player.id, league.id)
                 .await
@@ -589,15 +651,17 @@ mod tests {
     }
 
     #[test]
-    fn check_division_iihf_points() {
+    fn check_division_iihf_stats() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let score = division_iihf_stats(&pool, 1).await.unwrap();
-            assert_eq!(score.get(0).unwrap().points, 10);
-            assert_eq!(score.get(0).unwrap().team_name, "Bullseye");
-            assert_eq!(score.get(0).unwrap().reg_losses, 0);
-            assert_eq!(score.get(0).unwrap().ties, 2);
-            assert_eq!(score.get(1).unwrap().points, 4);
+            let score = division_iihf_stats(&pool, 1, SupportedLanguage::English).await.unwrap();
+            assert_eq!(score.len(), 2, "Too many teams selected.");
+            assert_eq!(score.get(0).unwrap().points, 10, "Top team should have 10 points");
+            assert_eq!(score.get(0).unwrap().team_name, "Bullseye", "Top team should be bullseye");
+            assert_eq!(score.get(0).unwrap().reg_losses, 0, "The bullseye should have no regulation losses");
+            assert_eq!(score.get(0).unwrap().ties, 2, "There should be two ties for the bullsye");
+            assert_eq!(score.get(1).unwrap().team_name, "See Cats", "The second-place team should be the see cats");
+            assert_eq!(score.get(1).unwrap().points, 4, "The second-place team should have four points");
         })
     }
 
