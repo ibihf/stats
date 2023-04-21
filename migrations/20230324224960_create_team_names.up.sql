@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS team_names (
   CONSTRAINT team_fk
     FOREIGN KEY(team)
       REFERENCES teams(id)
-      ON DELETE RESTRICT
+      ON DELETE RESTRICT,
+  CONSTRAINT no_duplicated_team_names
+    UNIQUE (team, language)
 );
 

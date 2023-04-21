@@ -10,5 +10,7 @@ CREATE TABLE IF NOT EXISTS division_names (
   CONSTRAINT division_fk
     FOREIGN KEY(division)
       REFERENCES divisions(id)
-      ON DELETE RESTRICT
+      ON DELETE RESTRICT,
+  CONSTRAINT no_duplicated_division_names
+    UNIQUE (division, language)
 );

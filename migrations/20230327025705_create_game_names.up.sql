@@ -10,5 +10,7 @@ CREATE TABLE IF NOT EXISTS game_names (
   CONSTRAINT game_fk
     FOREIGN KEY(game)
       REFERENCES games(id)
-      ON DELETE RESTRICT
+      ON DELETE RESTRICT,
+  CONSTRAINT no_duplicated_game_names
+    UNIQUE (game, language)
 );
