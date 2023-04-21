@@ -95,7 +95,7 @@ use sqlx::{Pool, Postgres};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-const VERSION: &str = "0.3.5";
+const VERSION: &str = "0.4.0-beta";
 
 #[derive(Template, TemplateUrl)]
 #[template(path = "language_list.html")]

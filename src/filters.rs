@@ -64,11 +64,11 @@ pub fn shot_player_name(shot: &ShotDetails) -> ::askama::Result<String> {
   Ok(format!("{} {}", initials(&shot.player_first_names)?, &shot.player_last_name))
 }
 pub fn initials(first_names: &str) -> ::askama::Result<String> {
-  Ok(first_names
+  Ok(format!("{}.", first_names
     .split_whitespace()
     .map(|name| &name[0..1])
     .collect::<Vec<_>>()
-    .join("."))
+    .join(".")))
 }
 pub fn nullable<T: std::fmt::Display>(ot: &Option<T>) -> ::askama::Result<String> {
   match ot {
