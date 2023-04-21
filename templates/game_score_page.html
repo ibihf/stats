@@ -1,6 +1,6 @@
 {% extends "master.html" %}
 
-{% block title %}{{ game.name.clone().unwrap() }}{% endblock %}
+{% block title %}{{ game.name|nullable }}{% endblock %}
 
 {% block content %}
 <h1>{{ localize("game-of-division", game: game.name.clone().unwrap(), division: division.name.clone().unwrap()) }}</h1>

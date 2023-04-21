@@ -113,6 +113,7 @@ struct BoxScoreTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
     goals: Vec<GoalDetails>,
+    lang: SupportedLanguage,
 }
 
 #[derive(Template)]
@@ -187,6 +188,7 @@ struct ShotsTableTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
     shots: Vec<ShotDetails>,
+    lang: SupportedLanguage,
 }
 
 #[derive(Template, TemplateUrl)]
@@ -244,14 +246,14 @@ async fn main() {
             &SupportedLanguage::English.lookup(GameListTemplate::URL_KEY),
             get(games_for_division_html),
         )
-        //.route(
-        //    &SupportedLanguage::English.lookup(GameScorePageTemplate::URL_KEY),
-        //    get(score_for_game_html),
-        //)
-        //.route(
-        //    &SupportedLanguage::French.lookup(GameScorePageTemplate::URL_KEY),
-        //    get(score_for_game_html),
-        //)
+        .route(
+            &SupportedLanguage::English.lookup(GameScorePageTemplate::URL_KEY),
+            get(score_for_game_html),
+        )
+        .route(
+            &SupportedLanguage::French.lookup(GameScorePageTemplate::URL_KEY),
+            get(score_for_game_html),
+        )
         //.route("/:lang/player/:name/", get(player_from_name))
         .with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
@@ -280,7 +282,7 @@ async fn player_from_name(
     let player = Player::from_name_case_insensitive(&server_config.db_pool, name.clone())
         .await
         .unwrap();
-    let latest_league = Player::latest_league(&server_config.db_pool, player.id)
+    let latest_league = Player::latest_league(&server_config.db_pool, player.id, lang.into())
         .await
         .unwrap()
         .unwrap();
@@ -333,7 +335,7 @@ async fn league_html(
     State(server_config): State<ServerState>,
     Path(lang): Path<SupportedLanguage>,
 ) -> impl IntoResponse {
-    let leagues = League::all(&*server_config.db_pool, lang).await.unwrap();
+    let leagues = League::all(&*server_config.db_pool, lang.into()).await.unwrap();
     let leagues_template = LeagueListTemplate {
         lang_links: other_lang_urls!(lang, LeagueListTemplate),
         locale: lang.into(),
@@ -351,7 +353,7 @@ async fn divisions_for_league_html(
         .await
         .unwrap()
         .unwrap();
-    let divisions = Division::by_league(&*server_config.db_pool, league_id, lang)
+    let divisions = Division::by_league(&*server_config.db_pool, league_id, lang.into())
         .await
         .unwrap();
     let html = DivisionListTemplate {
@@ -369,14 +371,14 @@ async fn games_for_division_html(
     State(server_config): State<ServerState>,
     Path((lang, division_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let division = Division::get(&*server_config.db_pool, division_id, lang)
+    let division = Division::get(&*server_config.db_pool, division_id, lang.into())
         .await
         .unwrap()
         .unwrap();
-    let games = Game::by_division(&*server_config.db_pool, division.id, lang)
+    let games = Game::by_division(&*server_config.db_pool, division.id, lang.into())
         .await
         .unwrap();
-    let iihf_stats = division.iihf_stats(&*server_config.db_pool, lang).await.unwrap();
+    let iihf_stats = division.iihf_stats(&*server_config.db_pool, lang.into()).await.unwrap();
     let games_template = GameListTemplate {
         locale: lang.into(),
         lang_links: other_lang_urls!(lang, GameListTemplate, "id" => division_id),
@@ -390,22 +392,19 @@ async fn games_for_division_html(
     };
     (StatusCode::OK, games_template)
 }
-/*
 async fn score_for_game_html(
     State(server_config): State<ServerState>,
     Path((lang, game_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let game = sqlx::query_as::<_, Game>("SELECT * FROM games WHERE id = $1;")
-        .bind(game_id)
-        .fetch_one(&*server_config.db_pool)
+    let game = Game::get(&*server_config.db_pool, game_id, lang.into())
         .await
-        .unwrap();
-    let division = Division::get(&*server_config.db_pool, game.division, lang)
+        .unwrap().unwrap();
+    let division = Division::get(&*server_config.db_pool, game.division, lang.into())
         .await
         .unwrap()
         .unwrap();
-    let pbp = game.play_by_play(&server_config.db_pool).await.unwrap();
-    let score = game.score(&server_config.db_pool).await.unwrap();
+    let pbp = game.play_by_play(&server_config.db_pool, lang.into()).await.unwrap();
+    let score = game.score(&server_config.db_pool, lang.into()).await.unwrap();
     let score_html = TeamGameStatsTemplate {
         locale: lang.into(),
         teams: score,
@@ -415,14 +414,16 @@ async fn score_for_game_html(
         locale: lang.into(),
         players: goal_details,
     };
-    let box_score = game.goals(&server_config.db_pool).await.unwrap();
+    let box_score = game.goals(&server_config.db_pool, lang.into()).await.unwrap();
     let box_score_html = BoxScoreTemplate {
         locale: lang.into(),
         goals: box_score,
+        lang,
     };
     let pbp_html = ShotsTableTemplate {
         locale: lang.into(),
         shots: pbp,
+        lang
     };
     let game_template = GameScorePageTemplate {
         locale: lang.into(),
@@ -437,7 +438,6 @@ async fn score_for_game_html(
     };
     (StatusCode::OK, game_template)
 }
-*/
 
 /*
 macro_rules! insert {

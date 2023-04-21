@@ -1,6 +1,6 @@
 {% extends "master.html" %}
 
-{% block title %}Games for {{ division.name.clone().unwrap_or("???".to_string()) }}{% endblock %}
+{% block title %}Games for {{ division.name|nullable }}{% endblock %}
 
 {% block content %}
 	<h1>Division: {{ division.name|nullable }}</h1>

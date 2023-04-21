@@ -12,7 +12,7 @@
   <tbody>
     {% for shot in shots %}
       <tr>
-        <td>{{ shot.player_name }}</td>
+        <td>{{ shot.player_first_names|initials }} {{ shot.player_last_name }}</td>
         <td>{{ shot.team_name }}</td>
         <td>{{ shot.player_number }}</td>
         <td>
@@ -25,22 +25,10 @@
         <td>{{ shot.period_short_name }}</td>
         <td>{{ shot.time_remaining|seconds_as_time }}</td>
         <td>
-          {% if shot.is_goal %}
-            {% if shot.first_assist_name.is_some() %}
-              {{ shot.first_assist_name.as_ref().unwrap() }}
-            {% else %}
-              {{ localize("unassisted") }}
-            {% endif %}
-          {% else %}
-            {{ localize("not-applicable") }}
-          {% endif %}
+          {{ shot|shot_assist_name(lang) }}
         </td>
         <td>
-          {% if shot.second_assist_name.is_some() %}
-            {{ shot.second_assist_name.as_ref().unwrap() }}
-          {% else %}
-            {{ localize("not-applicable") }}
-          {% endif %}
+          {{ shot|shot_second_assist_name(lang) }}
         </td>
       </tr>
     {% endfor %}

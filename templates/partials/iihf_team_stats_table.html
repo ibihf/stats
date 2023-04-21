@@ -13,7 +13,7 @@
 	<tbody>
 		{% for team in iihf_stats %}
 			<tr>
-				<td>{{ team.team_name }}</td>
+				<td>{{ team.team_name|nullable }}</td>
 				<td>{{ team.points }}</td>
 				<td>{{ team.reg_wins }}</td>
 				<td>{{ team.reg_losses }}</td>

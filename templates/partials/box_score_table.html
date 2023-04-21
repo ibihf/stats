@@ -11,24 +11,16 @@
   <tbody>
     {% for goal in goals %}
       <tr>
-        <td>{{ goal.player_name }}</td>
+        <td>{{ goal|goal_player_name }}</td>
         <td>{{ goal.team_name }}</td>
         <td>{{ goal.player_number }}</td>
         <td>{{ goal.period_short_name }}</td>
         <td>{{ goal.time_remaining|seconds_as_time }}</td>
         <td>
-          {% if goal.first_assist_name.is_some() %}
-            {{ goal.first_assist_name.as_ref().unwrap() }}
-          {% else %}
-            {{ localize("unassisted") }}
-          {% endif %}
+          {{ goal|goal_assist_name(lang) }}
         </td>
         <td>
-          {% if goal.second_assist_name.is_some() %}
-            {{ goal.second_assist_name.as_ref().unwrap() }}
-          {% else %}
-            {{ localize("not-applicable") }}
-          {% endif %}
+          {{ goal|goal_second_assist_name(lang) }}
         </td>
       </tr>
     {% endfor %}

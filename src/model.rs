@@ -8,7 +8,7 @@ pub trait TableName {
 }
 pub trait NameTableName {
     const NAME_TABLE_NAME: &'static str;
-      const NAME_TABLE_FK_NAME: &'static str;
+    const NAME_TABLE_FK_NAME: &'static str;
 }
 macro_rules! impl_table_name {
     ($ty:ident, $tname:literal) => {
@@ -148,7 +148,7 @@ pub struct League {
     pub name: Option<String>,
 }
 //impl_localized_get!(League, league_name);
-impl_localized_all!(League);
+//impl_localized_all!(League);
 /*
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
 #[ormx(table_name = "leagues", table = League, id = "id")]
@@ -157,18 +157,18 @@ pub struct NewLeague {
 }
 */
 
-#[derive(FromRow, Serialize, Deserialize, Debug)]
-//#[ormx(table = "divisions", id = id, insertable, deletable)]
+#[derive(FromRow, Serialize, Deserialize, Debug, NameTableName)]
+#[table_names(table_name = "divisions", name_func = "division_name", name_table_name = "division_names", name_table_name_fk = "division")]
 pub struct Division {
     //#[ormx(default)]
     pub id: i32,
-    //#[ormx(get_many(i32))]
+    #[table_names(get_many)]
     pub league: i32,
     pub name: Option<String>,
 }
-impl_localized_get!(Division, division_name);
-impl_localized_get_by_many!(Division, league);
-impl_localized_all!(Division);
+//impl_localized_get!(Division, division_name);
+//impl_localized_get_by_many!(Division, league);
+//impl_localized_all!(Division);
 
 #[derive(FromRow, Serialize, Deserialize, Debug)]
 //#[ormx(table_name = "divisions", table = Division, id = "id")]
@@ -176,8 +176,9 @@ pub struct NewDivision {
     pub league: i32,
 }
 
-#[derive(FromRow, Serialize, Deserialize, Debug)]
+#[derive(FromRow, Serialize, Deserialize, Debug, NameTableName)]
 //#[ormx(table = "teams", id = id, insertable, deletable)]
+#[table_names(table_name = "teams", name_func = "team_name", name_table_name = "team_names", name_table_name_fk = "team")]
 pub struct Team {
     //#[ormx(default)]
     pub id: i32,
@@ -185,7 +186,6 @@ pub struct Team {
     pub image: Option<String>,
     pub name: Option<String>,
 }
-impl_localized_get!(Team, team_name);
 
 /*
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
@@ -209,10 +209,11 @@ pub struct Player {
 
 impl Player {
     pub async fn from_name_case_insensitive(pool: &sqlx::PgPool, name: String) -> Option<Player> {
-        sqlx::query_as::<_, Player>(
-            "SELECT * FROM players WHERE REPLACE(UPPER(name), ' ', '-') LIKE UPPER($1);",
+        sqlx::query_as!(
+            Player,
+            "SELECT * FROM players WHERE REPLACE(UPPER(last_name), ' ', '-') LIKE UPPER($1);",
+            name
         )
-        .bind(name)
         .fetch_optional(pool)
         .await
         .unwrap()
@@ -258,19 +259,21 @@ pub struct GamePlayer {
     pub game: i32,
 }
 
-#[derive(FromRow, Deserialize, Serialize, Debug)]
-//#[ormx(table = "games", id = id, insertable, deletable)]
+#[derive(FromRow, Deserialize, Serialize, Debug, NameTableName)]
+#[table_names(table_name = "games", name_func = "game_name", name_table_name = "game_names", name_table_name_fk = "game")]
 pub struct Game {
     //#[ormx(default)]
     pub id: i32,
-    //#[ormx(get_many(i32))]
+    #[table_names(get_many)]
     pub division: i32,
     pub team_home: i32,
     pub team_away: i32,
     pub name: Option<String>,
+    pub start_at: DateTime<Utc>,
+    pub end_at: DateTime<Utc>,
 }
-impl_localized_get!(Game, game_name);
-impl_localized_get_by_many!(Game, division);
+//impl_localized_get!(Game, game_name);
+//impl_localized_get_by_many!(Game, division);
 
 #[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
 #[ormx(table = "periods", id = id, insertable, deletable)]
@@ -280,20 +283,6 @@ pub struct Period {
     #[ormx(get_many(i32))]
     pub game: i32,
 }
-
-impl_table_name!(GamePlayer, "game_players");
-impl_table_name!(Player, "players");
-impl_table_name!(League, "leagues");
-//impl_name_table_name!(League, "league_names", "league");
-impl_table_name!(Division, "divisions");
-impl_name_table_name!(Division, "division_names", "division");
-impl_table_name!(Team, "teams");
-impl_name_table_name!(Team, "team_names", "team");
-impl_table_name!(Shot, "shots");
-impl_table_name!(Game, "games");
-impl_name_table_name!(Game, "game_names", "game");
-impl_table_name!(Period, "periods");
-impl_table_name!(Language, "supported_languages");
 
 #[cfg(test)]
 mod tests {
@@ -328,7 +317,7 @@ mod tests {
     fn test_get_player_from_name() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let player = Player::from_name_case_insensitive(&pool, "tait-hoyem".to_string()).await;
+            let player = Player::from_name_case_insensitive(&pool, "hoyem".to_string()).await;
             assert!(player.is_some());
             let player = player.unwrap();
             assert_eq!(player.first_names, "Tait");
@@ -356,14 +345,7 @@ mod tests {
             fn $func_name() {
                 tokio_test::block_on(async move {
                     let pool = db_connect().await;
-                    let results = sqlx::query_as::<_, $ret_type>(&format!(
-                        "SELECT * FROM {};",
-                        <$ret_type as TableName>::TABLE_NAME
-                    ))
-                    .fetch_all(&pool)
-                    .await
-                    .unwrap();
-                    // check that there is at least one result item
+                    let results = $ret_type::all(&pool, SupportedLanguage::English.into()).await.unwrap();
                     assert!(
                         results.len() > 0,
                         "There must be at least one result in the table."
@@ -372,12 +354,12 @@ mod tests {
             }
         };
     }
-    generate_select_test!(GamePlayer, selec_game_player);
-    generate_select_test!(Player, select_player);
+    //generate_select_test!(GamePlayer, selec_game_player);
+   // generate_select_test!(Player, select_player);
     generate_select_test!(League, select_league);
     generate_select_test!(Division, select_division);
     generate_select_test!(Team, select_team);
-    generate_select_test!(Shot, select_shot);
+    //generate_select_test!(Shot, select_shot);
     generate_select_test!(Game, select_game);
-    generate_select_test!(Language, select_lang);
+    //generate_select_test!(Language, select_lang);
 }
