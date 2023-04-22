@@ -12,7 +12,7 @@
   <tbody>
     {% for shot in shots %}
       <tr>
-        <td>{{ shot.player_first_names|initials }} {{ shot.player_last_name }}</td>
+        <td>{{ shot|shot_player_name }}</td>
         <td>{{ shot.team_name }}</td>
         <td>{{ shot.player_number }}</td>
         <td>

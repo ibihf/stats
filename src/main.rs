@@ -1,3 +1,9 @@
+#![warn(
+	clippy::all,
+	clippy::pedantic,
+	unsafe_code,
+)]
+
 mod db;
 mod filters;
 mod languages;
@@ -254,10 +260,9 @@ async fn main() {
             &SupportedLanguage::French.lookup(GameScorePageTemplate::URL_KEY),
             get(score_for_game_html),
         )
-        //.route("/:lang/player/:name/", get(player_from_name))
         .with_state(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
-    println!("Listening on {}", addr);
+    println!("Listening on {addr}");
     axum::Server::bind(&addr)
         .serve(router.into_make_service())
         .await
@@ -275,42 +280,12 @@ async fn language_list(State(server_config): State<ServerState>) -> impl IntoRes
     (StatusCode::OK, lang_list_tmpl)
 }
 
-async fn player_from_name(
-    State(server_config): State<ServerState>,
-    Path((lang, name)): Path<(SupportedLanguage, String)>,
-) -> impl IntoResponse {
-    let player = Player::from_name_case_insensitive(&server_config.db_pool, name.clone())
-        .await
-        .unwrap();
-    let latest_league = Player::latest_league(&server_config.db_pool, player.id, lang.into())
-        .await
-        .unwrap()
-        .unwrap();
-    let latest_league_stats =
-        League::player_stats(&server_config.db_pool, player.id, latest_league.id)
-            .await
-            .unwrap();
-    let lifetime_stats = Player::lifetime_stats(&server_config.db_pool, player.id)
-        .await
-        .unwrap();
-    let html = PlayerPageTemplate {
-        player,
-        lang_links: other_lang_urls!(lang, PlayerPageTemplate),
-        locale: lang.into(),
-        league: latest_league,
-        league_stats: latest_league_stats,
-        lifetime_stats,
-        lang,
-    };
-    (StatusCode::OK, html)
-}
-
 /*
 macro_rules! get_all {
     ($crud_struct:ident, $func_name:ident) => {
         #[debug_handler]
         async fn $func_name(State(server_config): State<ServerState>) -> impl IntoResponse {
-            let cruder = $crud_struct::all(&*server_config.db_pool).await.unwrap();
+            let cruder = $crud_struct::all(&server_config.db_pool).await.unwrap();
             (StatusCode::OK, Json(cruder))
         }
     };
@@ -322,7 +297,7 @@ macro_rules! get_by_id {
             State(server_config): State<ServerState>,
             Path(id): Path<i32>,
         ) -> impl IntoResponse {
-            let cruder = $crud_struct::get(&*server_config.db_pool, id)
+            let cruder = $crud_struct::get(&server_config.db_pool, id)
                 .await
                 .unwrap();
             (StatusCode::OK, Json(cruder))
@@ -335,7 +310,7 @@ async fn league_html(
     State(server_config): State<ServerState>,
     Path(lang): Path<SupportedLanguage>,
 ) -> impl IntoResponse {
-    let leagues = League::all(&*server_config.db_pool, lang.into()).await.unwrap();
+    let leagues = League::all(&server_config.db_pool, lang.into()).await.unwrap();
     let leagues_template = LeagueListTemplate {
         lang_links: other_lang_urls!(lang, LeagueListTemplate),
         locale: lang.into(),
@@ -349,11 +324,11 @@ async fn divisions_for_league_html(
     State(server_config): State<ServerState>,
     Path((lang, league_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let league = League::get(&*server_config.db_pool, league_id, lang.into())
+    let league = League::get(&server_config.db_pool, league_id, lang.into())
         .await
         .unwrap()
         .unwrap();
-    let divisions = Division::by_league(&*server_config.db_pool, league_id, lang.into())
+    let divisions = Division::by_league(&server_config.db_pool, league_id, lang.into())
         .await
         .unwrap();
     let html = DivisionListTemplate {
@@ -371,14 +346,14 @@ async fn games_for_division_html(
     State(server_config): State<ServerState>,
     Path((lang, division_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let division = Division::get(&*server_config.db_pool, division_id, lang.into())
+    let division = Division::get(&server_config.db_pool, division_id, lang.into())
         .await
         .unwrap()
         .unwrap();
-    let games = Game::by_division(&*server_config.db_pool, division.id, lang.into())
+    let games = Game::by_division(&server_config.db_pool, division.id, lang.into())
         .await
         .unwrap();
-    let iihf_stats = division.iihf_stats(&*server_config.db_pool, lang.into()).await.unwrap();
+    let iihf_stats = division.iihf_stats(&server_config.db_pool, lang.into()).await.unwrap();
     let games_template = GameListTemplate {
         locale: lang.into(),
         lang_links: other_lang_urls!(lang, GameListTemplate, "id" => division_id),
@@ -396,10 +371,10 @@ async fn score_for_game_html(
     State(server_config): State<ServerState>,
     Path((lang, game_id)): Path<(SupportedLanguage, i32)>,
 ) -> impl IntoResponse {
-    let game = Game::get(&*server_config.db_pool, game_id, lang.into())
+    let game = Game::get(&server_config.db_pool, game_id, lang.into())
         .await
         .unwrap().unwrap();
-    let division = Division::get(&*server_config.db_pool, game.division, lang.into())
+    let division = Division::get(&server_config.db_pool, game.division, lang.into())
         .await
         .unwrap()
         .unwrap();

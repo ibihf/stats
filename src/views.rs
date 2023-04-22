@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use crate::model::{Division, Game, League, Player};
-use crate::languages::SupportedLanguage;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use sqlx::PgPool;
@@ -35,19 +34,19 @@ pub struct IihfStatsI64 {
     pub ties: i64,
     pub points: i64,
 }
-impl Into<IihfStatsI64> for IihfStats {
-    fn into(self) -> IihfStatsI64 {
+impl From<IihfStats> for IihfStatsI64 {
+    fn from(val: IihfStats) -> Self {
         IihfStatsI64 {
-            team_name: self.team_name.clone(),
-            team_id: self.team_id,
-            reg_wins: self.reg_wins.into(),
-            reg_losses: self.reg_losses.into(),
-            ot_wins: self.ot_wins.into(),
-            ot_losses: self.ot_losses.into(),
-            ties: self.ties.into(),
-            points: self.points.into(),
-        }
-    }
+            team_name: val.team_name.clone(),
+            team_id: val.team_id,
+            reg_wins: val.reg_wins.into(),
+            reg_losses: val.reg_losses.into(),
+            ot_wins: val.ot_wins.into(),
+            ot_losses: val.ot_losses.into(),
+            ties: val.ties.into(),
+            points: val.points.into(),
+				}
+		}
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug)]
@@ -459,7 +458,7 @@ impl Player {
     shots.period_time ASC
   LIMIT 5;
   "#;
-        sqlx::query_as::<_, GoalDetails>(&query)
+        sqlx::query_as::<_, GoalDetails>(query)
             .bind(id)
             .bind(lang)
             .fetch_all(pool)
