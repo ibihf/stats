@@ -21,7 +21,12 @@ pub struct Language {
 }
 
 #[derive(FromRow, Serialize, Deserialize, Debug, NameTableName)]
-#[table_names(table_name = "leagues", name_func = "league_name", name_table_name = "league_names", name_table_name_fk = "league")]
+#[table_names(
+    table_name = "leagues",
+    name_func = "league_name",
+    name_table_name = "league_names",
+    name_table_name_fk = "league"
+)]
 pub struct League {
     //#[ormx(default)]
     pub id: i32,
@@ -38,7 +43,12 @@ pub struct NewLeague {
 */
 
 #[derive(FromRow, Serialize, Deserialize, Debug, NameTableName)]
-#[table_names(table_name = "divisions", name_func = "division_name", name_table_name = "division_names", name_table_name_fk = "division")]
+#[table_names(
+    table_name = "divisions",
+    name_func = "division_name",
+    name_table_name = "division_names",
+    name_table_name_fk = "division"
+)]
 pub struct Division {
     //#[ormx(default)]
     pub id: i32,
@@ -58,7 +68,12 @@ pub struct NewDivision {
 
 #[derive(FromRow, Serialize, Deserialize, Debug, NameTableName)]
 //#[ormx(table = "teams", id = id, insertable, deletable)]
-#[table_names(table_name = "teams", name_func = "team_name", name_table_name = "team_names", name_table_name_fk = "team")]
+#[table_names(
+    table_name = "teams",
+    name_func = "team_name",
+    name_table_name = "team_names",
+    name_table_name_fk = "team"
+)]
 pub struct Team {
     //#[ormx(default)]
     pub id: i32,
@@ -140,7 +155,12 @@ pub struct GamePlayer {
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug, NameTableName)]
-#[table_names(table_name = "games", name_func = "game_name", name_table_name = "game_names", name_table_name_fk = "game")]
+#[table_names(
+    table_name = "games",
+    name_func = "game_name",
+    name_table_name = "game_names",
+    name_table_name_fk = "game"
+)]
 pub struct Game {
     //#[ormx(default)]
     pub id: i32,
@@ -225,7 +245,9 @@ mod tests {
             fn $func_name() {
                 tokio_test::block_on(async move {
                     let pool = db_connect().await;
-                    let results = $ret_type::all(&pool, SupportedLanguage::English.into()).await.unwrap();
+                    let results = $ret_type::all(&pool, SupportedLanguage::English.into())
+                        .await
+                        .unwrap();
                     assert!(
                         results.len() > 0,
                         "There must be at least one result in the table."
@@ -235,7 +257,7 @@ mod tests {
         };
     }
     //generate_select_test!(GamePlayer, selec_game_player);
-   // generate_select_test!(Player, select_player);
+    // generate_select_test!(Player, select_player);
     generate_select_test!(League, select_league);
     generate_select_test!(Division, select_division);
     generate_select_test!(Team, select_team);

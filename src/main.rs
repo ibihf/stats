@@ -1,8 +1,4 @@
-#![warn(
-	clippy::all,
-	clippy::pedantic,
-	unsafe_code,
-)]
+#![warn(clippy::all, clippy::pedantic, unsafe_code)]
 
 mod db;
 mod filters;
@@ -310,7 +306,9 @@ async fn league_html(
     State(server_config): State<ServerState>,
     Path(lang): Path<SupportedLanguage>,
 ) -> impl IntoResponse {
-    let leagues = League::all(&server_config.db_pool, lang.into()).await.unwrap();
+    let leagues = League::all(&server_config.db_pool, lang.into())
+        .await
+        .unwrap();
     let leagues_template = LeagueListTemplate {
         lang_links: other_lang_urls!(lang, LeagueListTemplate),
         locale: lang.into(),
@@ -353,7 +351,10 @@ async fn games_for_division_html(
     let games = Game::by_division(&server_config.db_pool, division.id, lang.into())
         .await
         .unwrap();
-    let iihf_stats = division.iihf_stats(&server_config.db_pool, lang.into()).await.unwrap();
+    let iihf_stats = division
+        .iihf_stats(&server_config.db_pool, lang.into())
+        .await
+        .unwrap();
     let games_template = GameListTemplate {
         locale: lang.into(),
         lang_links: other_lang_urls!(lang, GameListTemplate, "id" => division_id),
@@ -373,13 +374,20 @@ async fn score_for_game_html(
 ) -> impl IntoResponse {
     let game = Game::get(&server_config.db_pool, game_id, lang.into())
         .await
-        .unwrap().unwrap();
+        .unwrap()
+        .unwrap();
     let division = Division::get(&server_config.db_pool, game.division, lang.into())
         .await
         .unwrap()
         .unwrap();
-    let pbp = game.play_by_play(&server_config.db_pool, lang.into()).await.unwrap();
-    let score = game.score(&server_config.db_pool, lang.into()).await.unwrap();
+    let pbp = game
+        .play_by_play(&server_config.db_pool, lang.into())
+        .await
+        .unwrap();
+    let score = game
+        .score(&server_config.db_pool, lang.into())
+        .await
+        .unwrap();
     let score_html = TeamGameStatsTemplate {
         locale: lang.into(),
         teams: score,
@@ -389,7 +397,10 @@ async fn score_for_game_html(
         locale: lang.into(),
         players: goal_details,
     };
-    let box_score = game.goals(&server_config.db_pool, lang.into()).await.unwrap();
+    let box_score = game
+        .goals(&server_config.db_pool, lang.into())
+        .await
+        .unwrap();
     let box_score_html = BoxScoreTemplate {
         locale: lang.into(),
         goals: box_score,
@@ -398,7 +409,7 @@ async fn score_for_game_html(
     let pbp_html = ShotsTableTemplate {
         locale: lang.into(),
         shots: pbp,
-        lang
+        lang,
     };
     let game_template = GameScorePageTemplate {
         locale: lang.into(),

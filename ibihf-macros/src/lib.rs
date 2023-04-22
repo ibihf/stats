@@ -2,20 +2,20 @@ use darling::FromDeriveInput;
 use proc_macro::{self, TokenStream};
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Data, Field, Attribute, Ident};
+use syn::{parse_macro_input, Attribute, Data, DeriveInput, Field, Ident};
 
 fn matching_attr_map(attr: &Attribute, attr_name: &str) -> bool {
-  if let Ok(syn::Meta::List(meta_list)) = attr.parse_meta() {
-      return meta_list.path.is_ident("table_names")
-          && meta_list.nested.iter().any(|nested_meta| {
-              if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested_meta {
-                  path.is_ident(attr_name)
-              } else {
-                  false
-              }
-          });
-  }
-  false
+    if let Ok(syn::Meta::List(meta_list)) = attr.parse_meta() {
+        return meta_list.path.is_ident("table_names")
+            && meta_list.nested.iter().any(|nested_meta| {
+                if let syn::NestedMeta::Meta(syn::Meta::Path(path)) = nested_meta {
+                    path.is_ident(attr_name)
+                } else {
+                    false
+                }
+            });
+    }
+    false
 }
 
 #[derive(FromDeriveInput, Default)]
@@ -49,27 +49,31 @@ pub fn derive(input: TokenStream) -> TokenStream {
 #[derive(FromDeriveInput, Default)]
 #[darling(default, attributes(table_names))]
 struct TableNameOpts {
-  table_name: String,
-  name_func: String,
-  name_table_name: String,
-  name_table_name_fk: String,
+    table_name: String,
+    name_func: String,
+    name_table_name: String,
+    name_table_name_fk: String,
 }
 
 fn get_map_filter(field: &Field) -> Option<String> {
-  let name = &field.ident.as_ref().unwrap();
-  if field.attrs.iter().any(|attr| attr.path.is_ident("get")) {
-    Some(name.to_string())
-  } else {
-    None
-  }
+    let name = &field.ident.as_ref().unwrap();
+    if field.attrs.iter().any(|attr| attr.path.is_ident("get")) {
+        Some(name.to_string())
+    } else {
+        None
+    }
 }
 fn get_many_map_filter(field: &Field) -> Option<String> {
-  let name = &field.ident.as_ref().unwrap();
-  if field.attrs.iter().any(|attr| matching_attr_map(attr, "get_many")) {
-    Some(name.to_string())
-  } else {
-    None
-  }
+    let name = &field.ident.as_ref().unwrap();
+    if field
+        .attrs
+        .iter()
+        .any(|attr| matching_attr_map(attr, "get_many"))
+    {
+        Some(name.to_string())
+    } else {
+        None
+    }
 }
 
 #[proc_macro_derive(NameTableName, attributes(table_names))]
@@ -82,7 +86,7 @@ pub fn derive_get(input: TokenStream) -> TokenStream {
         Data::Struct(ref data) => &data.fields,
         _ => panic!("MyDerive only supports structs"),
     };
-    
+
     let by_many_names: Vec<String> = fields.iter().filter_map(get_many_map_filter).collect();
     let by_many_funcs: Vec<TokenStream2> = by_many_names.iter()
       .map(|name| {
@@ -108,7 +112,6 @@ WHERE {name} = $1;
         }
       }.into())
       .collect();
-      
 
     let table_name = opts.table_name;
     let name_table_name = opts.name_table_name;
@@ -120,22 +123,22 @@ WHERE {name} = $1;
         const NAME_TABLE_FK_NAME: &'static str = #name_table_name_fk;
     };
 
-    let get_query = format!(r#"
+    let get_query = format!(
+        r#"
 SELECT
   {0}.*,
   {1}({0}.id, $2) AS name
 FROM {0}
 WHERE {0}.id = $1;"#,
-      table_name,
-      name_func,
+        table_name, name_func,
     );
-    let all_query = format!(r#"
+    let all_query = format!(
+        r#"
 SELECT
   {0}.*,
   {1}({0}.id, $1) AS name
 FROM {0}"#,
-      table_name,
-      name_func,
+        table_name, name_func,
     );
     let output = quote! {
         impl NameTableName for #ident {

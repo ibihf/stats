@@ -45,8 +45,8 @@ impl From<IihfStats> for IihfStatsI64 {
             ot_losses: val.ot_losses.into(),
             ties: val.ties.into(),
             points: val.points.into(),
-				}
-		}
+        }
+    }
 }
 
 #[derive(FromRow, Deserialize, Serialize, Debug)]
@@ -107,7 +107,11 @@ ORDER BY
         .fetch_all(pool)
         .await
 }
-pub async fn game_goals(pool: &PgPool, game_id: i32, lang: i32) -> Result<Vec<GoalDetails>, sqlx::Error> {
+pub async fn game_goals(
+    pool: &PgPool,
+    game_id: i32,
+    lang: i32,
+) -> Result<Vec<GoalDetails>, sqlx::Error> {
     sqlx::query_as::<_, GoalDetails>(
         r#"
   SELECT 
@@ -151,7 +155,11 @@ pub async fn game_goals(pool: &PgPool, game_id: i32, lang: i32) -> Result<Vec<Go
     .fetch_all(pool)
     .await
 }
-pub async fn game_iihf_stats(pool: &PgPool, game_id: i32, lang: i32) -> Result<Vec<IihfStats>, sqlx::Error> {
+pub async fn game_iihf_stats(
+    pool: &PgPool,
+    game_id: i32,
+    lang: i32,
+) -> Result<Vec<IihfStats>, sqlx::Error> {
     let query = r#"
 	SELECT
     teams.id AS team_id,
@@ -184,7 +192,11 @@ pub async fn game_iihf_stats(pool: &PgPool, game_id: i32, lang: i32) -> Result<V
 /// NOTE: The algorithm used here requires that a 4th period is the "overtime";
 /// it does not check if there was only two periods, followed by an overtime.
 /// This should be sufficient for most.
-pub async fn game_iihf_points(pool: &PgPool, game_id: i32, lang: i32) -> Result<Vec<IihfPoints>, sqlx::Error> {
+pub async fn game_iihf_points(
+    pool: &PgPool,
+    game_id: i32,
+    lang: i32,
+) -> Result<Vec<IihfPoints>, sqlx::Error> {
     let query = r#"
   SELECT 
 		iihf_points(games.id, teams.id) AS points,
@@ -204,7 +216,11 @@ pub async fn game_iihf_points(pool: &PgPool, game_id: i32, lang: i32) -> Result<
         .await
 }
 /// Returns the number of shots and goals for each team in the game.
-pub async fn game_score(pool: &PgPool, game_id: i32, lang: i32) -> Result<Vec<TeamStats>, sqlx::Error> {
+pub async fn game_score(
+    pool: &PgPool,
+    game_id: i32,
+    lang: i32,
+) -> Result<Vec<TeamStats>, sqlx::Error> {
     let query = r#"
   SELECT 
     COUNT(CASE WHEN shots.goal = true THEN shots.id END) AS goals,
@@ -279,16 +295,28 @@ impl Game {
     pub async fn box_score(&self, pool: &PgPool) -> Result<Vec<PlayerStats>, sqlx::Error> {
         game_box_score(pool, self.id).await
     }
-    pub async fn iihf_points(&self, pool: &PgPool, lang: i32) -> Result<Vec<IihfPoints>, sqlx::Error> {
+    pub async fn iihf_points(
+        &self,
+        pool: &PgPool,
+        lang: i32,
+    ) -> Result<Vec<IihfPoints>, sqlx::Error> {
         game_iihf_points(pool, self.id, lang).await
     }
-    pub async fn iihf_stats(&self, pool: &PgPool, lang: i32) -> Result<Vec<IihfStats>, sqlx::Error> {
+    pub async fn iihf_stats(
+        &self,
+        pool: &PgPool,
+        lang: i32,
+    ) -> Result<Vec<IihfStats>, sqlx::Error> {
         game_iihf_stats(pool, self.id, lang).await
     }
     pub async fn goals(&self, pool: &PgPool, lang: i32) -> Result<Vec<GoalDetails>, sqlx::Error> {
         game_goals(pool, self.id, lang).await
     }
-    pub async fn play_by_play(&self, pool: &PgPool, lang: i32) -> Result<Vec<ShotDetails>, sqlx::Error> {
+    pub async fn play_by_play(
+        &self,
+        pool: &PgPool,
+        lang: i32,
+    ) -> Result<Vec<ShotDetails>, sqlx::Error> {
         game_play_by_play(pool, self.id, lang).await
     }
 }
@@ -396,13 +424,21 @@ GROUP BY team_id;
 }
 
 impl Division {
-    pub async fn iihf_stats(&self, pool: &PgPool, lang: i32) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
+    pub async fn iihf_stats(
+        &self,
+        pool: &PgPool,
+        lang: i32,
+    ) -> Result<Vec<IihfStatsI64>, sqlx::Error> {
         division_iihf_stats(pool, self.id, lang).await
     }
 }
 
 impl Player {
-    pub async fn latest_league(pool: &PgPool, id: i32, lang: i32) -> Result<Option<League>, sqlx::Error> {
+    pub async fn latest_league(
+        pool: &PgPool,
+        id: i32,
+        lang: i32,
+    ) -> Result<Option<League>, sqlx::Error> {
         let query = r#"
   SELECT leagues.*,team_name(teams.id, $2) AS name
   FROM players
@@ -421,7 +457,11 @@ impl Player {
             .fetch_optional(pool)
             .await
     }
-    pub async fn latest_stats(pool: &PgPool, id: i32, lang: i32) -> Result<Vec<GoalDetails>, sqlx::Error> {
+    pub async fn latest_stats(
+        pool: &PgPool,
+        id: i32,
+        lang: i32,
+    ) -> Result<Vec<GoalDetails>, sqlx::Error> {
         let query = r#"
   SELECT 
     players.id AS player_id,
@@ -622,7 +662,9 @@ mod tests {
     fn check_play_by_play() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let pbp = game_play_by_play(&pool, 3, SupportedLanguage::English.into()).await.unwrap();
+            let pbp = game_play_by_play(&pool, 3, SupportedLanguage::English.into())
+                .await
+                .unwrap();
         })
     }
 
@@ -631,7 +673,9 @@ mod tests {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
             let player = Player::get(&pool, 2).await.unwrap();
-            let latest = Player::latest_stats(&pool, player.id, SupportedLanguage::English.into()).await.unwrap();
+            let latest = Player::latest_stats(&pool, player.id, SupportedLanguage::English.into())
+                .await
+                .unwrap();
         })
     }
 
@@ -639,7 +683,10 @@ mod tests {
     fn check_league_player_stats() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let league = League::get(&pool, 1, SupportedLanguage::English.into()).await.unwrap().unwrap();
+            let league = League::get(&pool, 1, SupportedLanguage::English.into())
+                .await
+                .unwrap()
+                .unwrap();
             let player = Player::get(&pool, 2).await.unwrap();
             let stats = League::player_stats(&pool, player.id, league.id)
                 .await
@@ -665,7 +712,9 @@ mod tests {
     fn check_score_details_from_game() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let scores = game_goals(&pool, 3, SupportedLanguage::English.into()).await.unwrap();
+            let scores = game_goals(&pool, 3, SupportedLanguage::English.into())
+                .await
+                .unwrap();
             println!("{scores:?}");
         })
     }
@@ -696,16 +745,32 @@ mod tests {
     fn check_division_iihf_stats() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let score = division_iihf_stats(&pool, 1, SupportedLanguage::English.into()).await.unwrap();
+            let score = division_iihf_stats(&pool, 1, SupportedLanguage::English.into())
+                .await
+                .unwrap();
             let team_1 = score.get(0).unwrap();
             let team_2 = score.get(1).unwrap();
             assert_eq!(score.len(), 2, "Too many teams selected.");
             assert_eq!(team_1.points, 10, "Top team should have 10 points");
-            assert_eq!(team_1.team_name.as_ref().unwrap(), "Bullseye", "Top team should be bullseye");
-            assert_eq!(team_1.reg_losses, 0, "The bullseye should have no regulation losses");
+            assert_eq!(
+                team_1.team_name.as_ref().unwrap(),
+                "Bullseye",
+                "Top team should be bullseye"
+            );
+            assert_eq!(
+                team_1.reg_losses, 0,
+                "The bullseye should have no regulation losses"
+            );
             assert_eq!(team_1.ties, 2, "There should be two ties for the bullsye");
-            assert_eq!(team_2.team_name.as_ref().unwrap(), "See Cats", "The second-place team should be the see cats");
-            assert_eq!(team_2.points, 4, "The second-place team should have four points");
+            assert_eq!(
+                team_2.team_name.as_ref().unwrap(),
+                "See Cats",
+                "The second-place team should be the see cats"
+            );
+            assert_eq!(
+                team_2.points, 4,
+                "The second-place team should have four points"
+            );
         })
     }
 
@@ -713,7 +778,9 @@ mod tests {
     fn check_iihf_stats() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let score = game_iihf_stats(&pool, 4, SupportedLanguage::English.into()).await.unwrap();
+            let score = game_iihf_stats(&pool, 4, SupportedLanguage::English.into())
+                .await
+                .unwrap();
             let team_1 = score.get(0).unwrap();
             assert_eq!(team_1.points, 2);
             assert_eq!(team_1.team_name.as_ref().unwrap(), "Bullseye");
@@ -727,7 +794,9 @@ mod tests {
     fn check_iihf_points() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let score = game_iihf_points(&pool, 4, SupportedLanguage::English.into()).await.unwrap();
+            let score = game_iihf_points(&pool, 4, SupportedLanguage::English.into())
+                .await
+                .unwrap();
             assert_eq!(score.get(0).unwrap().points, 2);
             assert_eq!(score.get(0).unwrap().team_name, "Bullseye");
             assert_eq!(score.get(1).unwrap().points, 2);
@@ -738,7 +807,9 @@ mod tests {
     fn check_game_score() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let score = game_score(&pool, 1, SupportedLanguage::English.into()).await.unwrap();
+            let score = game_score(&pool, 1, SupportedLanguage::English.into())
+                .await
+                .unwrap();
             assert_eq!(score.get(0).unwrap().goals, 1);
             assert_eq!(score.get(1).unwrap().goals, 1);
         })
