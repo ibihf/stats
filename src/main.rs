@@ -73,6 +73,7 @@ macro_rules! impl_url_gen {
   }
 }
 
+
 use static_assertions::assert_impl_all;
 use traits::TemplateUrl;
 #[macro_use]
@@ -132,6 +133,14 @@ struct TeamGameStatsTemplate<'a> {
     #[locale]
     locale: Locale<'a>,
     teams: Vec<TeamStats>,
+}
+
+trait Link {
+	type Params;
+	const LINK_URL_KEY: &'static str;
+	const LINK_TEMPLATE_KEY: &'static str;
+	fn lang_link(p: Params) -> LangLink;
+
 }
 
 #[derive(Template, TemplateUrl)]

@@ -32,8 +32,7 @@ pub struct League {
     pub id: i32,
     pub name: Option<String>,
 }
-//impl_localized_get!(League, league_name);
-//impl_localized_all!(League);
+
 /*
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
 #[ormx(table_name = "leagues", table = League, id = "id")]
@@ -56,9 +55,6 @@ pub struct Division {
     pub league: i32,
     pub name: Option<String>,
 }
-//impl_localized_get!(Division, division_name);
-//impl_localized_get_by_many!(Division, league);
-//impl_localized_all!(Division);
 
 #[derive(FromRow, Serialize, Deserialize, Debug)]
 //#[ormx(table_name = "divisions", table = Division, id = "id")]
@@ -172,8 +168,6 @@ pub struct Game {
     pub start_at: DateTime<Utc>,
     pub end_at: DateTime<Utc>,
 }
-//impl_localized_get!(Game, game_name);
-//impl_localized_get_by_many!(Game, division);
 
 #[derive(FromRow, Deserialize, Serialize, Debug, ormx::Table)]
 #[ormx(table = "periods", id = id, insertable, deletable)]

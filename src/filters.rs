@@ -34,12 +34,15 @@ pub fn goal_assist_name(goal: &GoalDetails, lang: &SupportedLanguage) -> ::askam
 	};
     Ok(format!("{f_names} {l_name}"))
 }
-pub fn shot_assist_name(goal: &ShotDetails, lang: &SupportedLanguage) -> ::askama::Result<String> {
-    let Some(ref f_names) = goal.second_assist_first_names else {
+pub fn shot_assist_name(shot: &ShotDetails, lang: &SupportedLanguage) -> ::askama::Result<String> {
+	if !shot.is_goal {
 		return Ok(lang.lookup("not-applicable"));
+	}
+    let Some(ref f_names) = shot.first_assist_first_names else {
+		return Ok(lang.lookup("unassisted"));
 	};
-    let Some(ref l_name) = goal.second_assist_last_name else {
-		return Ok(lang.lookup("not-applicable"));
+    let Some(ref l_name) = shot.first_assist_last_name else {
+		return Ok(lang.lookup("unassisted"));
 	};
     Ok(format!("{f_names} {l_name}"))
 }
@@ -56,16 +59,20 @@ pub fn goal_second_assist_name(
     Ok(format!("{f_names} {l_name}"))
 }
 pub fn shot_second_assist_name(
-    goal: &ShotDetails,
+    shot: &ShotDetails,
     lang: &SupportedLanguage,
 ) -> ::askama::Result<String> {
-    let Some(ref f_names) = goal.second_assist_first_names else {
+	if !shot.is_goal ||
+		shot.second_assist_id.is_none() {
 		return Ok(lang.lookup("not-applicable"));
+	}
+    let Some(ref f_names) = shot.second_assist_first_names else {
+		return Ok(lang.lookup("unassisted"));
 	};
-    let Some(ref l_name) = goal.second_assist_last_name else {
-		return Ok(lang.lookup("not-applicable"));
+    let Some(ref l_name) = shot.second_assist_last_name else {
+		return Ok(lang.lookup("unassisted"));
 	};
-    Ok(format!("{f_names} {l_name}"))
+	Ok(format!("{f_names} {l_name}"))
 }
 pub fn shot_player_name(shot: &ShotDetails) -> ::askama::Result<String> {
     Ok(format!(

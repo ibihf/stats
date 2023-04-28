@@ -57,7 +57,7 @@ struct TableNameOpts {
 
 fn get_map_filter(field: &Field) -> Option<String> {
     let name = &field.ident.as_ref().unwrap();
-    if field.attrs.iter().any(|attr| attr.path.is_ident("get")) {
+    if field.attrs.iter().any(|attr| attr.path.is_ident("id")) {
         Some(name.to_string())
     } else {
         None
@@ -86,7 +86,6 @@ pub fn derive_get(input: TokenStream) -> TokenStream {
         Data::Struct(ref data) => &data.fields,
         _ => panic!("MyDerive only supports structs"),
     };
-
     let by_many_names: Vec<String> = fields.iter().filter_map(get_many_map_filter).collect();
     let by_many_funcs: Vec<TokenStream2> = by_many_names.iter()
       .map(|name| {

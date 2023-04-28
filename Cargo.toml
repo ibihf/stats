@@ -33,6 +33,7 @@ i18n-embed-fl = "0.6.6"
 rust-embed = { version = "6.6.1", features = ["axum"] }
 lazy_static = "1.4.0"
 ibihf-macros = { version = "0.1.0", path = "ibihf-macros" }
+phf = { version = "0.11.1", features = ["macros"] }
 
 [dev-dependencies]
 tokio-test = "0.4.2"
