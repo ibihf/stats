@@ -60,8 +60,7 @@ macro_rules! impl_url_gen {
       }
     }
     #[cfg(test)]
-    #[rename_item::rename(case="snake")]
-    #[rename::rename_mod(prepend="test_")]
+    #[rename_item::rename(name("test_", $struct), case="snake")]
     mod $struct {
       use crate::SupportedLanguage;
       use crate::$struct;
@@ -98,7 +97,7 @@ use sqlx::{Pool, Postgres};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-const VERSION: &str = "0.4.0-beta";
+const VERSION: &str = "0.5.0-beta";
 
 #[derive(Template, TemplateUrl)]
 #[template(path = "language_list.html")]
@@ -139,8 +138,7 @@ trait Link {
 	type Params;
 	const LINK_URL_KEY: &'static str;
 	const LINK_TEMPLATE_KEY: &'static str;
-	fn lang_link(p: Params) -> LangLink;
-
+	fn lang_link(p: Self::Params) -> LangLink;
 }
 
 #[derive(Template, TemplateUrl)]
@@ -249,6 +247,10 @@ async fn main() {
     let router = Router::new()
         .route("/", get(language_list))
         .route("/:lang/", get(league_html))
+				.route(
+					&SupportedLanguage::English.lookup(PlayerPageTemplate::URL_KEY),
+					get(player_html),
+				)
         .route(
             &SupportedLanguage::English.lookup(DivisionListTemplate::URL_KEY),
             get(divisions_for_league_html),
@@ -272,6 +274,35 @@ async fn main() {
         .serve(router.into_make_service())
         .await
         .unwrap();
+}
+
+async fn player_html(
+	State(server_config): State<ServerState>,
+	Path((lang,id)): Path<(SupportedLanguage, i32)>,
+) -> impl IntoResponse {
+    let player = Player::get(&*server_config.db_pool, id)
+        .await
+        .unwrap();
+		let league = Player::latest_league(&*server_config.db_pool, player.id, lang.into())
+			.await
+			.unwrap()
+			.unwrap();
+		let league_stats = League::player_stats(&*server_config.db_pool, player.id, league.id)
+			.await
+			.unwrap();
+		let lifetime_stats = Player::lifetime_stats(&*server_config.db_pool, player.id)
+			.await
+			.unwrap();
+    let player_template = PlayerPageTemplate {
+        locale: lang.into(),
+        lang_links: other_lang_urls!(lang, LeagueListTemplate),
+        lang,
+				player,
+				league,
+				league_stats,
+				lifetime_stats,
+    };
+    (StatusCode::OK, player_template)
 }
 
 async fn language_list(State(server_config): State<ServerState>) -> impl IntoResponse {
