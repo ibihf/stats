@@ -9,7 +9,7 @@ use crate::{GoalDetails, Player, ShotDetails, SupportedLanguage};
 pub fn seconds_as_time(secs: &i32) -> ::askama::Result<String> {
     let minutes = secs / 60;
     let seconds = secs % 60;
-    Ok(format!("{minutes}:{seconds}"))
+    Ok(format!("{minutes:02}:{seconds:02}"))
 }
 pub fn player_name(player: &Player) -> ::askama::Result<String> {
     Ok(format!(
