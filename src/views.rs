@@ -447,9 +447,9 @@ impl Player {
     ON goals.shooter=game_players.id
    AND goals.goal=true
   LEFT JOIN shots assists
-    ON (points.assistant=game_players.id
-    OR points.assistant_second=game_players.id)
-   AND points.goal=true
+    ON (assists.assistant=game_players.id
+    OR assists.assistant_second=game_players.id)
+   AND assists.goal=true
   WHERE players.id=$1
   GROUP BY players.id;
   "#;
@@ -754,7 +754,14 @@ mod tests {
     fn check_lifetime_stats() {
         tokio_test::block_on(async move {
             let pool = db_connect().await;
-            let lifetime_stats = Player::lifetime_stats(&pool, 5).await.unwrap();
+            let lifetime_stats = Player::lifetime_stats(&pool, 1).await.unwrap();
+						assert_eq!(lifetime_stats.goals, 1);
+						assert_eq!(lifetime_stats.assists, 1);
+						assert_eq!(lifetime_stats.points, 2);
+            let hilary_lifetime_stats = Player::lifetime_stats(&pool, 2).await.unwrap();
+						assert_eq!(hilary_lifetime_stats.goals, 17);
+						assert_eq!(hilary_lifetime_stats.assists, 1);
+						assert_eq!(hilary_lifetime_stats.points, 18);
         })
     }
 
