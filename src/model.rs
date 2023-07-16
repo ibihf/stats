@@ -33,6 +33,27 @@ pub struct League {
     pub name: Option<String>,
 }
 
+#[derive(FromRow, Serialize, Deserialize, Debug, NameTableName)]
+#[table_names(
+    table_name = "roles",
+    name_func = "role_name",
+    name_table_name = "role_names",
+    name_table_name_fk = "role"
+)]
+pub struct Role {
+    pub id: i32,
+    pub name: Option<String>,
+}
+
+#[derive(FromRow, Serialize, Deserialize, Debug, ormx::Table)]
+#[ormx(table = "users", id = id, insertable, deletable)]
+pub struct User {
+    #[ormx(default)]
+    pub id: i32,
+		pub user_name: String,
+		pub pass_hash: String,
+}
+
 /*
 #[derive(FromRow, Serialize, Deserialize, Debug, ormx::Patch)]
 #[ormx(table_name = "leagues", table = League, id = "id")]
@@ -182,7 +203,7 @@ pub struct Period {
 mod tests {
     use crate::languages::SupportedLanguage;
     use crate::model::{
-        Division, Game, GamePlayer, Language, League, Player, Shot, TableName, Team,
+        Division, Game, GamePlayer, Language, League, Player, Shot, TableName, Team, User,
     };
     use ormx::Table;
     use std::env;
@@ -233,7 +254,7 @@ mod tests {
     /// Then, it checks that
     /// 1. The table rows gets deserialized correctly.
     /// 2. There is at least one row.
-    macro_rules! generate_select_test {
+    macro_rules! generate_select_test_lang {
         ($ret_type:ident, $func_name:ident) => {
             #[test]
             fn $func_name() {
@@ -250,12 +271,30 @@ mod tests {
             }
         };
     }
-    //generate_select_test!(GamePlayer, selec_game_player);
-    // generate_select_test!(Player, select_player);
-    generate_select_test!(League, select_league);
-    generate_select_test!(Division, select_division);
-    generate_select_test!(Team, select_team);
-    //generate_select_test!(Shot, select_shot);
-    generate_select_test!(Game, select_game);
-    //generate_select_test!(Language, select_lang);
+    macro_rules! generate_select_test {
+        ($ret_type:ident, $func_name:ident) => {
+            #[test]
+            fn $func_name() {
+                tokio_test::block_on(async move {
+                    let pool = db_connect().await;
+                    let results = $ret_type::all(&pool)
+                        .await
+                        .unwrap();
+                    assert!(
+                        results.len() > 0,
+                        "There must be at least one result in the table."
+                    );
+                });
+            }
+        };
+    }
+    generate_select_test_lang!(League, select_league);
+    generate_select_test_lang!(Division, select_division);
+    generate_select_test_lang!(Team, select_team);
+    generate_select_test_lang!(Game, select_game);
+    generate_select_test!(GamePlayer, selec_game_player);
+    generate_select_test!(Player, select_player);
+    generate_select_test!(User, select_user);
+    generate_select_test!(Shot, select_shot);
+    generate_select_test!(Language, select_lang);
 }
