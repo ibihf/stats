@@ -364,8 +364,9 @@ impl Player {
         id: i32,
         lang: i32,
     ) -> Result<Option<League>, sqlx::Error> {
-        let query = r#"
-  SELECT leagues.*,team_name(teams.id, $2) AS name
+				sqlx::query_as!(
+					League,
+  r#"SELECT leagues.*,team_name(teams.id, $2) AS name
   FROM players
   JOIN game_players ON game_players.player=players.id
   JOIN games ON games.id=game_players.game
@@ -374,13 +375,11 @@ impl Player {
   JOIN leagues ON leagues.id=divisions.league
   WHERE players.id=$1
   ORDER BY games.end_at DESC
-  LIMIT 1;
-  "#;
-        sqlx::query_as::<_, League>(query)
-            .bind(id)
-            .bind(lang)
-            .fetch_optional(pool)
-            .await
+  LIMIT 1;"#,
+					id, lang
+				)
+				.fetch_optional(pool)
+				.await
     }
     pub async fn latest_stats(
         pool: &PgPool,
