@@ -1,0 +1,22 @@
+{% extends "master.html" %}
+
+{% block content %}
+<table>
+  <thead>
+    <tr>
+      <th>{{ localize("league_name") }}</th>
+      <th>{{ localize("start_date") }}</th>
+      <th>{{ localize("end_date") }}</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for league in leagues %}
+      <tr>
+        <td>{{ league.name|nullable }}</td>
+        <td>{{ league.start_date }}</td>
+        <td>{{ league.end_date }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 askama = { git = "https://github.com/TTWNO/askama/", features = ["with-axum", "i18n"] }
 askama_axum = { git = "https://github.com/TTWNO/askama/" }
-axum = { version = "0.6.15" }
+axum = { version = "0.6.15", features = ["form"] }
 chrono = { version = "0.4.24", features = ["serde"] }
 serde = "1.0.158"
 static_assertions = "1.1.0"
@@ -21,6 +21,7 @@ strum_macros = "0.24.3"
 hashmap_macro = "0.1.0"
 ibihf-macros = { version = "0.1.0", path = "ibihf-macros" }
 rename-item = "0.1.1"
+bcrypt = "0.15.0"
 
 [dev-dependencies]
 tokio-test = "0.4.2"

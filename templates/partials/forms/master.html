@@ -1,0 +1,8 @@
+{% extends "master.html" %}
+
+{% block content %}
+<form method="POST" enctype="multipart/form-data">
+  {% block form %}{% endblock %}
+  <input type="submit" value="{% block submit_text %}{% endblock %}"/>
+</form>
+{% endblock %}

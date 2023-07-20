@@ -1,6 +1,7 @@
 #![warn(clippy::all, clippy::pedantic, unsafe_code)]
 
 mod db;
+mod forms;
 mod filters;
 mod languages;
 mod model;
@@ -86,6 +87,7 @@ use views::{GoalDetails, IihfStatsI64, PlayerStats, ShotDetails, TeamStats};
 
 use askama::Template;
 use axum::{
+    Form,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
@@ -154,6 +156,19 @@ struct DivisionListTemplate<'a> {
 }
 impl_url_gen!(DivisionListTemplate, id: i32);
 assert_impl_all!(DivisionListTemplate: TemplateUrl);
+
+#[derive(Template, TemplateUrl)]
+#[urls(url_key = "login_url", url_key_template = "login_url_tmpl")]
+#[template(path = "form.html")]
+struct LoginFormTemplate<'a> {
+    #[locale]
+    locale: Locale<'a>,
+    lang_links: Vec<LangLink>,
+    lang: SupportedLanguage,
+    form: forms::Login,
+}
+impl_url_gen!(LoginFormTemplate, id: i32);
+assert_impl_all!(LoginFormTemplate: TemplateUrl);
 
 #[derive(Template, TemplateUrl)]
 #[urls(url_key = "root_url", url_key_template = "root_url_tmpl")]
@@ -248,6 +263,10 @@ async fn main() {
         .route("/", get(language_list))
         .route("/:lang/", get(league_html))
 				.route(
+					&SupportedLanguage::English.lookup(LoginFormTemplate::URL_KEY),
+					get(login_form),
+				)
+				.route(
 					&SupportedLanguage::English.lookup(PlayerPageTemplate::URL_KEY),
 					get(player_html),
 				)
@@ -274,6 +293,17 @@ async fn main() {
         .serve(router.into_make_service())
         .await
         .unwrap();
+}
+
+async fn login_form(
+	Path(lang): Path<SupportedLanguage>,
+) -> impl IntoResponse {
+  (StatusCode::OK, LoginFormTemplate {
+    locale: lang.into(),
+    lang_links: other_lang_urls!(lang, LeagueListTemplate),
+    lang,
+    form: forms::Login::default(),
+  })
 }
 
 async fn player_html(

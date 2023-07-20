@@ -1,5 +1,7 @@
 root_url = /:lang/
 root_url_tmpl = /{ $lang }/
+login_url = /:lang/login/
+login_url_tmpl = /{ $lang }/login/
 player_url = /:lang/player/:id/
 player_url_tmpl = /{ $lang }/player/{ $id }/
 game_url = /:lang/game/:id/
